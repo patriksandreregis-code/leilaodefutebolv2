@@ -24,6 +24,12 @@ a{color:var(--mu)}.top{display:flex;justify-content:space-between;margin-bottom:
 .dot.f{background:var(--ac);color:#241a00;border:2px solid #fff}
 .sl small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;text-shadow:0 1px 2px #000}
 ol{margin:.3rem 0;padding-left:1.3rem}
+.seg{display:flex;flex-wrap:wrap;gap:.4rem;margin:.3rem 0 .9rem}.seg button{padding:.35rem .8rem}
+.lbl{font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.mt{border-top:1px solid var(--line);padding:.6rem 0}.mt .hd{display:flex;gap:.6rem;align-items:baseline}.mt .hd b{flex:1;font-size:1.1rem}
+.sc{font:800 1.7rem 'Barlow Condensed','Arial Narrow',sans-serif}.sm{font-size:.85rem}
+table{width:100%;border-collapse:collapse;margin-top:.5rem;font-size:.9rem}td,th{padding:.25rem .4rem;text-align:left}tr.me{color:var(--ok);font-weight:700}
+.sl{flex:1;max-width:76px;width:auto}
 </style></head>
 <body><div class="wrap">
 <div class="top"><a href="/">← Menu</a><span class="mu" id="prog"></span></div>
@@ -34,30 +40,39 @@ ol{margin:.3rem 0;padding-left:1.3rem}
 <script src="/dados.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const F = { ATT: 3, MID: 3, DEF: 4, GK: 1 }, ORDER = ['GK', 'DEF', 'MID', 'ATT'], PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' };
+const PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' }, ORDER = ['GK', 'DEF', 'MID', 'ATT'];
+const FORM = { '4-3-3': [4, 3, 3], '4-4-2': [4, 4, 2], '3-5-2': [3, 5, 2], '5-3-2': [5, 3, 2], '4-5-1': [4, 5, 1], '3-4-3': [3, 4, 3] };
+const STY = ['Defensivo', 'Equilibrado', 'Ofensivo'], DIF = ['Fácil', 'Normal', 'Difícil'];
+const cfg = { f: '4-3-3', style: 1, diff: 1, fmt: 48 };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
 const hash = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
 const seeded = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const avg = a => a.length ? a.reduce((s, x) => s + x[2], 0) / a.length : 0;
 const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+let G = null, rolling = false;
 
-let G = null, rolling = false, shown = [];
+const seg = (k, opts, cur) => `<div class="seg">${opts.map(([v, l]) => `<button class="${v === cur ? 'pri' : ''}" onclick="setCfg('${k}',${typeof v === 'number' ? v : `'${v}'`})">${l}</button>`).join('')}</div>`;
+function setCfg(k, v) { cfg[k] = v; render(); }
 
 function start(daily) {
-  const done = store.get('dado_daily', null);
-  if (daily && done && done.date === today()) { G = { daily, over: true, res: done.res, team: done.team, phase: 'result' }; shown = done.res.evs; return render(); }
-  G = { daily, R: daily ? seeded(hash('dado' + today())) : Math.random, deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] }, picked: new Set(), n: 0, cur: null, phase: 'roll' };
-  shown = []; render();
+  const d = store.get('dado_daily2', null);
+  if (daily && d && d.date === today()) { G = { ...d.G, daily: true, phase: 'camp' }; G.rev = G.camp.matches.length; return render(); }
+  const f = FORM[cfg.f];
+  G = { daily, F: { GK: 1, DEF: f[0], MID: f[1], ATT: f[2] }, R: daily ? seeded(hash('dado' + today())) : Math.random,
+    seed: daily ? today() : Math.random().toString(36).slice(2, 8).toUpperCase(), deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] },
+    picked: new Set(), n: 0, cur: null, rr: 3, phase: 'roll', rev: 0 };
+  render();
 }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-const elig = (s) => s.p.filter(x => !G.picked.has(x[0]) && G.team[x[1]].length < F[x[1]]);
-function draw() {
-  for (let k = 0; k < 50; k++) {
+const elig = s => s.p.filter(x => !G.picked.has(x[0]) && G.team[x[1]].length < G.F[x[1]]);
+function draw(ok = () => true) {
+  for (let k = 0; k < 80; k++) {
     if (!G.deck.length) G.deck = shuffle(SQUADS.map((_, i) => i), G.R);
     const s = SQUADS[G.deck.pop()];
-    if (elig(s).length) return s;
+    if (elig(s).length && ok(s)) return s;
   }
+  return SQUADS.find(s => elig(s).length && ok(s)) || SQUADS.find(s => elig(s).length);
 }
 function roll() {
   if (rolling) return; rolling = true;
@@ -68,76 +83,134 @@ function roll() {
   }, 90);
   setTimeout(() => { clearInterval(iv); rolling = false; G.cur = final; G.phase = 'pick'; render(); }, 900);
 }
+function reroll(kind) {
+  if (G.rr < 1) return;
+  let s;
+  if (kind === 'cup') { const c = SQUADS.filter(x => x.t === G.cur.t && x !== G.cur && elig(x).length); if (!c.length) return; s = c[Math.floor(G.R() * c.length)]; }
+  else s = draw(x => x.t !== G.cur.t);
+  if (!s) return; G.cur = s; G.rr--; render();
+}
 function pick(nm) {
   const x = G.cur.p.find(y => y[0] === nm); if (!x) return;
   G.team[x[1]].push(x); G.picked.add(nm); G.n++; G.cur = null;
-  if (G.n === 11) return finish();
-  G.phase = 'roll'; render();
-}
-function pois(l, R) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= R(); } while (p > L); return k - 1; }
-function finish() {
-  const T = G.team, R = G.R;
-  const off = avg(T.ATT) * .5 + avg(T.MID) * .3 + avg(T.DEF) * .2, def = avg(T.GK) * .3 + avg(T.DEF) * .45 + avg(T.MID) * .25;
-  const gf = pois(2.2 * Math.exp((off - 78) / 10), R), ga = pois(1.3 * Math.exp((78 - def) / 10), R);
-  const pool = [...T.ATT.map(x => [x, 5]), ...T.MID.map(x => [x, 2]), ...T.DEF.map(x => [x, .5])], tot = pool.reduce((s, x) => s + x[1], 0);
-  const scorer = () => { let r = R() * tot; for (const [x, w] of pool) if ((r -= w) <= 0) return x[0]; return pool[0][0][0]; };
-  const evs = [];
-  for (let i = 0; i < gf; i++) evs.push({ m: 1 + Math.floor(R() * 90), us: 1, who: scorer() });
-  for (let i = 0; i < ga; i++) evs.push({ m: 1 + Math.floor(R() * 90), us: 0, who: 'Adversário' });
-  evs.sort((a, b) => a.m - b.m);
-  const rating = Math.round((off + def) / 2 * 10) / 10;
-  G.res = { gf, ga, evs, rating, date: today(), daily: G.daily };
-  G.phase = 'result'; shown = []; render();
-  const rk = store.get('dado_rank', []); rk.push({ gf, ga, rating, date: today(), daily: G.daily });
-  rk.sort((a, b) => (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf); store.set('dado_rank', rk.slice(0, 10));
-  if (G.daily) store.set('dado_daily', { date: today(), res: G.res, team: G.team });
-  let i = 0; const iv = setInterval(() => { shown = evs.slice(0, ++i); renderResult(); if (i >= evs.length) { clearInterval(iv); G.over = true; renderResult(); renderRank(); } }, 700);
-  if (!evs.length) { G.over = true; renderResult(); renderRank(); }
+  G.phase = G.n === 11 ? 'ready' : 'roll'; render();
 }
 
+// ===== Simulação da Copa =====
+const pois = (l, R) => { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= R(); } while (p > L); return k - 1; };
+const strength = pl => { const a = p => avg(pl.filter(x => x[1] === p)); return { off: a('ATT') * .5 + a('MID') * .3 + a('DEF') * .2, def: a('GK') * .3 + a('DEF') * .45 + a('MID') * .25 }; };
+const bestXI = sq => [['GK', 1], ['DEF', 4], ['MID', 3], ['ATT', 3]].flatMap(([p, n]) => sq.p.filter(x => x[1] === p).sort((a, b) => b[2] - a[2]).slice(0, n));
+const poolOf = l => l.map(x => [x[0], { ATT: 5, MID: 2, DEF: .6, GK: 0 }[x[1]]]).filter(x => x[1] > 0);
+function goals(n, pool, R) {
+  const tot = pool.reduce((s, x) => s + x[1], 0), out = [];
+  for (let i = 0; i < n; i++) { let r = R() * tot; for (const [nm, w] of pool) if ((r -= w) <= 0) { out.push(nm); break; } }
+  return out;
+}
+const fmtG = a => { const c = {}; a.forEach(n => c[n] = (c[n] || 0) + 1); return Object.entries(c).map(([n, k]) => k > 1 ? `${n} (${k})` : n); };
+function play(a, b, R) {
+  const ga = pois(1.35 * Math.exp((a.s.off - b.s.def) / 12), R), gb = pois(1.35 * Math.exp((b.s.off - a.s.def) / 12), R);
+  return { gf: ga, ga: gb, us: goals(ga, a.pool, R), them: goals(gb, b.pool, R) };
+}
+function simulate() {
+  const lineup = ORDER.flatMap(p => G.team[p]), st = cfg.style - 1, d = cfg.diff * 3;
+  const R = seeded(hash(G.seed + lineup.map(x => x[0]).join()));
+  const me = { name: 'Seu time', s: strength(lineup), pool: poolOf(lineup) };
+  me.s.off += st * 2; me.s.def -= st * 2;
+  const used = new Set();
+  const opp = () => { const c = SQUADS.map((_, i) => i).filter(i => !used.has(i)); const i = c[Math.floor(R() * c.length)]; used.add(i);
+    const sq = SQUADS[i], b = bestXI(sq), s = strength(b); s.off += d; s.def += d; return { name: sq.t + ' ' + sq.y, s, pool: poolOf(b) }; };
+  const M = [], O = [opp(), opp(), opp()];
+  const rows = [{ name: 'SEU TIME', me: 1 }, ...O.map(o => ({ name: o.name.toUpperCase() }))].map(r => ({ ...r, pts: 0, gf: 0, ga: 0 }));
+  const add = (i, j, r) => { rows[i].gf += r.gf; rows[i].ga += r.ga; rows[j].gf += r.ga; rows[j].ga += r.gf;
+    if (r.gf > r.ga) rows[i].pts += 3; else if (r.gf < r.ga) rows[j].pts += 3; else { rows[i].pts++; rows[j].pts++; } };
+  O.forEach((o, k) => { const r = play(me, o, R); add(0, k + 1, r); M.push({ stage: 'Grupos', opp: o.name, ...r, won: r.gf > r.ga, draw: r.gf === r.ga }); });
+  [[1, 2], [1, 3], [2, 3]].forEach(([i, j]) => add(i, j, play(O[i - 1], O[j - 1], R)));
+  const tb = rows.map(r => ({ ...r, gd: r.gf - r.ga })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+  M[2].table = tb; const pos = tb.findIndex(r => r.me);
+  let champ = false, out = 'Fase de grupos';
+  if (pos < 2 || (cfg.fmt === 48 && pos === 2 && tb[pos].pts >= 4)) {
+    const stages = cfg.fmt === 48 ? ['16-avos', 'Oitavas', 'Quartas', 'Semi', 'Final'] : ['Oitavas', 'Quartas', 'Semi', 'Final'];
+    out = null;
+    for (const stage of stages) {
+      const o = opp(), r = play(me, o, R); let won = r.gf > r.ga, pen = false;
+      if (r.gf === r.ga) { pen = true; won = R() < Math.min(.8, Math.max(.2, .5 + (me.s.off + me.s.def - o.s.off - o.s.def) / 80)); }
+      M.push({ stage, opp: o.name, ...r, won, pen });
+      if (!won) { out = stage; break; }
+    }
+    champ = !out;
+  }
+  const sc = {}; M.forEach(m => m.us.forEach(n => sc[n] = (sc[n] || 0) + 1));
+  const top = Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const res = { champ, out, wins: M.filter(m => m.won).length, losses: M.filter(m => !m.won && !m.draw).length, gf: M.reduce((s, m) => s + m.gf, 0), ga: M.reduce((s, m) => s + m.ga, 0),
+    rating: Math.round((me.s.off + me.s.def) / 2 * 10) / 10, top, date: today(), daily: G.daily };
+  G.camp = { matches: M, res }; G.phase = 'camp'; G.rev = 0;
+  const rk = store.get('dado_rank2', []); rk.push(res);
+  rk.sort((a, b) => b.champ - a.champ || b.wins - a.wins || (b.gf - b.ga) - (a.gf - a.ga)); store.set('dado_rank2', rk.slice(0, 10));
+  if (G.daily) store.set('dado_daily2', { date: today(), G: { F: G.F, team: G.team, seed: G.seed, camp: G.camp } });
+  render();
+}
+const next = () => { G.rev++; render(); }, all = () => { G.rev = G.camp.matches.length; render(); };
+
+// ===== Telas =====
 function render() {
-  $('prog').textContent = G ? (G.daily ? 'Desafio do dia · ' : 'Jogo livre · ') + (G.phase === 'result' ? '11' : G.n) + '/11' : '';
   let h = '';
+  $('prog').textContent = G && G.phase !== 'camp' ? (G.daily ? 'Desafio do dia · ' : 'Jogo livre · ') + G.n + '/11' : '';
   if (!G) {
-    const d = store.get('dado_daily', null), doneToday = d && d.date === today();
-    h = `<h1 style="font-size:2.6rem">Dado da Copa</h1><p class="mu">Role o dado: sai uma seleção de uma Copa do Mundo. Escale um craque daquele elenco, complete os 11 e veja se seu time faz 7 a 0.</p>
-      <p><button class="pri" onclick="start(false)">Jogo livre</button> <button onclick="start(true)">Desafio do dia ${doneToday ? '(já jogado · ver resultado)' : '(mesmo sorteio para todos)'}</button></p>`;
+    const d = store.get('dado_daily2', null), done = d && d.date === today();
+    h = `<h1 style="font-size:2.6rem">Dado da Copa</h1><p class="mu">Role o dado, escale 11 craques de seleções sorteadas e simule uma Copa do Mundo: você precisa vencer todas as partidas do mata-mata para ser campeão. <a href="/selecoes">Ver seleções</a></p>
+      <div class="lbl">Formação</div>${seg('f', Object.keys(FORM).map(k => [k, k]), cfg.f)}
+      <div class="lbl">Estilo</div>${seg('style', STY.map((l, i) => [i, l]), cfg.style)}
+      <div class="lbl">Dificuldade dos adversários</div>${seg('diff', DIF.map((l, i) => [i, l]), cfg.diff)}
+      <div class="lbl">Formato da Copa</div>${seg('fmt', [[32, '32 seleções · 7 jogos'], [48, '48 seleções · 8 jogos']], cfg.fmt)}
+      <button class="pri" onclick="start(false)">Jogo livre</button> <button onclick="start(true)">Desafio do dia ${done ? '(ver resultado)' : '(mesmo sorteio para todos)'}</button>`;
   } else if (G.phase === 'roll') {
-    h = `<p class="mu">Escalação ${G.n}/11</p><button class="pri" style="font-size:1.4rem" onclick="roll()">🎲 Rolar o dado</button>`;
+    h = `<p class="mu">Escalação ${G.n}/11 · ${cfg.f === undefined ? '' : ''}Estilo: ${STY[cfg.style]}</p><button class="pri" style="font-size:1.4rem" onclick="roll()">🎲 Rolar o dado</button>`;
   } else if (G.phase === 'pick') {
-    h = `<div class="mu">Elenco sorteado</div><div class="big">${esc(G.cur.t)} ${G.cur.y}</div><p class="mu">Escolha um craque para uma vaga livre.</p>` +
-      ORDER.map(pos => `<div class="mu">${PN[pos]}s (${G.team[pos].length}/${F[pos]})</div><div class="pl">` + G.cur.p.filter(x => x[1] === pos).map(x => {
-        const ok = !G.picked.has(x[0]) && G.team[pos].length < F[pos];
+    const cupOk = SQUADS.some(x => x.t === G.cur.t && x !== G.cur && elig(x).length);
+    h = `<div class="lbl">Saiu</div><div class="big">${esc(G.cur.t)} ${G.cur.y}</div>
+      <div class="lbl" style="margin-top:.6rem">Não curtiu? Re-sorteie · ${G.rr} restantes</div>
+      <div class="seg"><button ${G.rr ? '' : 'disabled'} onclick="reroll('team')">↺ Outra seleção</button><button ${G.rr && cupOk ? '' : 'disabled'} onclick="reroll('cup')">↺ Outra Copa</button></div>` +
+      ORDER.map(pos => `<div class="lbl">${PN[pos]}s (${G.team[pos].length}/${G.F[pos]})</div><div class="pl">` + G.cur.p.filter(x => x[1] === pos).map(x => {
+        const ok = !G.picked.has(x[0]) && G.team[pos].length < G.F[pos];
         return `<button ${ok ? '' : 'disabled'} onclick="pick(this.dataset.n)" data-n="${esc(x[0])}">${esc(x[0])} <b>${x[2]}</b></button>`;
       }).join('') + '</div>').join('');
-  } else { h = '<div id="res"></div>'; }
-  $('main').innerHTML = h; pitch(); renderRank();
-  if (G && G.phase === 'result') renderResult();
+  } else if (G.phase === 'ready') {
+    h = `<div class="lbl">Escalação completa</div><div class="big">11/11</div>
+      <div class="lbl" style="margin-top:.8rem">Estilo de jogo</div>${seg('style', STY.map((l, i) => [i, l]), cfg.style)}
+      <button class="pri" style="font-size:1.4rem" onclick="simulate()">Simular a Copa →</button>`;
+  } else h = campHtml();
+  $('main').innerHTML = h; pitch(); rank();
 }
-function renderResult() {
-  const r = G.res, gf = shown.filter(e => e.us).length, ga = shown.length - gf, fin = G.over;
-  const perfect = fin && r.gf >= 7 && r.ga === 0;
-  $('res').innerHTML = `<div class="mu">Seu time vs Adversário · nota do time ${r.rating}</div>
-    <div class="big" style="font-size:4.5rem">${fin ? r.gf : gf} x ${fin ? r.ga : ga}</div>
-    <ol>${shown.map(e => `<li class="${e.us ? 'ok' : 'bad'}">${e.m}' ${esc(e.who)}${e.us ? '' : ' (gol contra você)'}</li>`).join('')}</ol>` +
-    (fin ? `<h2 style="font-size:1.8rem;margin:.6rem 0">${perfect ? '7 a 0! Goleada perfeita 🏆' : r.gf - r.ga >= 4 ? 'Que goleada! 🔥' : r.gf > r.ga ? 'Vitória!' : r.gf === r.ga ? 'Empate...' : 'Derrota 😬'}</h2>
-    <button class="pri" onclick="share()">Copiar resultado</button> <button onclick="G=null;render()">Voltar</button>` : '');
+function campHtml() {
+  const C = G.camp, M = C.matches, r = C.res, n = G.rev, fin = n >= M.length;
+  let h = `<div class="lbl">A campanha · seed #${esc(G.seed)}</div><h1 style="font-size:2.4rem;margin-bottom:.4rem">A campanha</h1>`;
+  M.slice(0, n).forEach(m => {
+    h += `<div class="mt"><div class="hd"><span class="lbl" style="width:4.5rem">${m.stage}</span><b>vs ${esc(m.opp)}</b><span class="sc ${m.won ? 'ok' : m.draw ? '' : 'bad'}">${m.gf}–${m.ga}${m.pen ? ' <small>pên</small>' : ''}</span></div>
+      <div class="mu sm">GOLS ${fmtG(m.us).map(esc).join(', ') || '—'} · SOFREU ${fmtG(m.them).map(esc).join(', ') || '—'}</div>` +
+      (m.table ? `<table><tr class="mu"><th></th><th>Pts</th><th>SG</th></tr>${m.table.map((t, i) => `<tr class="${t.me ? 'me' : ''}"><td>${i + 1}º ${esc(t.name)}</td><td>${t.pts}</td><td>${t.gd > 0 ? '+' : ''}${t.gd}</td></tr>`).join('')}</table>` : '') + '</div>';
+  });
+  if (!fin) return h + `<p><button class="pri" onclick="next()">Próximo jogo →</button> <button onclick="all()">Mostrar tudo</button></p>`;
+  return h + `<div class="panel" style="background:#0b2036;margin-top:1rem"><div class="lbl">${r.champ ? 'Campeão do mundo 🏆' : 'Eliminado · ' + esc(r.out)}</div>
+    <div class="big" style="font-size:4.5rem">${r.wins}–${r.losses}</div>
+    <div>${r.wins} vitórias · ${r.gf} gols pró · ${r.ga} sofridos · nota ${r.rating}</div>
+    ${r.top.length ? `<div class="mu">Chuteira de ouro: ${r.top.map(([n, k]) => esc(n) + ' ' + k).join(' · ')}</div>` : ''}</div>
+    <p><button class="pri" onclick="share()">Copiar resultado</button> <button onclick="G=null;render()">Jogar de novo</button></p>`;
 }
 function share() {
-  const r = G.res, t = `Dado da Copa ${G.daily ? today() : ''}: meu time fez ${r.gf} x ${r.ga} (nota ${r.rating}). Consegue fazer 7 a 0? ${location.origin}/dado`;
+  const r = G.camp.res, t = `Dado da Copa ${G.daily ? today() : '#' + G.seed}: ${r.champ ? 'CAMPEÃO DO MUNDO 🏆' : 'eliminado em ' + r.out} · ${r.wins} vitórias, ${r.gf}x${r.ga} em gols. Consegue ser campeão? ${location.origin}/dado`;
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => alert('Copiado!'), () => prompt('Copie:', t));
 }
 function pitch() {
-  const T = G ? G.team : { GK: [], DEF: [], MID: [], ATT: [] };
+  const F = G ? G.F : (f => ({ GK: 1, DEF: f[0], MID: f[1], ATT: f[2] }))(FORM[cfg.f]), T = G ? G.team : { GK: [], DEF: [], MID: [], ATT: [] };
   $('pitch').innerHTML = '<div class="field">' + ['ATT', 'MID', 'DEF', 'GK'].map(pos => '<div class="row">' + Array.from({ length: F[pos] }, (_, i) => {
     const x = T[pos][i];
     return x ? `<div class="sl" title="${esc(x[0])}"><div class="dot f">${x[2]}</div><small>${esc(x[0])}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>';
   }).join('') + '</div>').join('') + '</div>';
 }
-function renderRank() {
-  const rk = store.get('dado_rank', []);
-  $('rank').innerHTML = '<h2 style="font-size:1.6rem">Melhores placares (neste aparelho)</h2>' + (rk.length ?
-    '<ol>' + rk.map(r => `<li><b>${r.gf} x ${r.ga}</b> <span class="mu">· nota ${r.rating} · ${r.date}${r.daily ? ' · desafio' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma partida ainda.</p>');
+function rank() {
+  const rk = store.get('dado_rank2', []);
+  $('rank').innerHTML = '<h2 style="font-size:1.6rem">Melhores campanhas (neste aparelho)</h2>' + (rk.length ?
+    '<ol>' + rk.map(r => `<li><b>${r.champ ? '🏆 Campeão' : esc(r.out)}</b> <span class="mu">· ${r.wins} vitórias · ${r.gf}x${r.ga} · ${r.date}${r.daily ? ' · desafio' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma campanha ainda.</p>');
 }
 render();
 </script></body></html>

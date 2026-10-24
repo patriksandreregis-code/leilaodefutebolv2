@@ -65,7 +65,7 @@ function close(r) {
   setTimeout(() => nextLot(r), 3500);
 }
 
-const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/dados.js': 'dados.js' };
+const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js' };
 const server = http.createServer((q, s) => {
   const f = FILES[new URL(q.url, 'http://x').pathname];
   if (!f) { s.writeHead(404); return s.end('404'); }

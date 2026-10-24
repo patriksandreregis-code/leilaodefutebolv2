@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Seleções · Dado da Copa</title>
+<style>:root{--bg:#0e2a47;--card:#143a5e;--line:#2a5782;--tx:#f2f6fa;--mu:#9bb6d1;--ac:#ffb703}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,sans-serif}.w{max-width:820px;margin:0 auto;padding:1rem}
+a{color:var(--mu)}.mu{color:var(--mu)}details{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:.5rem 0;padding:.6rem .9rem}
+summary{cursor:pointer;font-weight:700;font-size:1.1rem}summary span{color:var(--mu);font-weight:400;font-size:.9rem}
+h3{margin:.8rem 0 .2rem;color:var(--ac)}.chip{display:inline-block;background:#0b2036;border-radius:4px;padding:0 .45rem;margin:.15rem .2rem 0 0;font-size:.85rem}.chip b{color:var(--ac)}</style></head>
+<body><div class="w"><a href="/dado">← Dado da Copa</a><h1 id="t"></h1><p class="mu">Seleções e Copas disponíveis. As notas são aproximadas e a base cresce aos poucos.</p><div id="l"></div></div>
+<script src="/dados.js"></script><script>
+const g={};SQUADS.forEach(s=>(g[s.t]=g[s.t]||[]).push(s));
+const names=Object.keys(g).sort((a,b)=>a.localeCompare(b,'pt'));
+document.getElementById('t').textContent=names.length+' seleções · '+SQUADS.length+' elencos';
+const E=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+document.getElementById('l').innerHTML=names.map(n=>`<details><summary>${E(n)} <span>${g[n].map(s=>s.y).sort().join(' · ')}</span></summary>`+
+ g[n].sort((a,b)=>a.y-b.y).map(s=>`<h3>Copa ${s.y}</h3>`+s.p.map(x=>`<span class="chip">${E(x[0])} <b>${x[2]}</b> <span class="mu">${x[1]}</span></span>`).join('')).join('')+'</details>').join('');
+</script></body></html>
