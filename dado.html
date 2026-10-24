@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dado da Copa</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e2a47;--card:#143a5e;--line:#2a5782;--tx:#f2f6fa;--mu:#9bb6d1;--ac:#ffb703;--ok:#4ad295;--bad:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 Barlow,system-ui,sans-serif}
+h1,h2,.big{font-family:'Barlow Condensed','Arial Narrow',sans-serif;margin:0}
+button{font:inherit;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:.6rem 1rem;cursor:pointer;font-weight:600}
+button.pri{background:var(--ac);color:#241a00;border-color:var(--ac)}button:disabled{opacity:.35;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto;padding:1rem}.mu{color:var(--mu)}.ok{color:var(--ok)}.bad{color:var(--bad)}
+a{color:var(--mu)}.top{display:flex;justify-content:space-between;margin-bottom:1rem}
+.grid{display:grid;grid-template-columns:3fr 2fr;gap:1rem}@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+.big{font-size:3rem;font-weight:800;line-height:1;color:var(--ac)}
+.dice{font-size:4rem;line-height:1}
+.pl{display:flex;flex-wrap:wrap;gap:.5rem;margin:.4rem 0 1rem}
+.pl button{display:flex;gap:.5rem;align-items:center}.pl b{color:var(--ac)}
+.field{position:relative;display:flex;flex-direction:column;justify-content:space-around;height:380px;padding:.6rem;background:#1f7a4a linear-gradient(#e8f5ec,#e8f5ec) center/100% 2px no-repeat;border:2px solid #e8f5ec;border-radius:8px}
+.field::after{content:'';position:absolute;left:50%;top:50%;width:72px;height:72px;border:2px solid #e8f5ec;border-radius:50%;transform:translate(-50%,-50%)}
+.row{display:flex;justify-content:space-around;position:relative;z-index:1}.sl{width:76px;text-align:center}
+.dot{width:42px;height:42px;border-radius:50%;margin:0 auto;border:2px dashed #e8f5eccc;display:grid;place-items:center;font-weight:700}
+.dot.f{background:var(--ac);color:#241a00;border:2px solid #fff}
+.sl small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;text-shadow:0 1px 2px #000}
+ol{margin:.3rem 0;padding-left:1.3rem}
+</style></head>
+<body><div class="wrap">
+<div class="top"><a href="/">← Menu</a><span class="mu" id="prog"></span></div>
+<div class="grid">
+  <div><div class="panel" id="main"></div><div class="panel" id="rank"></div></div>
+  <div class="panel" id="pitch"></div>
+</div></div>
+<script src="/dados.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const F = { ATT: 3, MID: 3, DEF: 4, GK: 1 }, ORDER = ['GK', 'DEF', 'MID', 'ATT'], PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const today = () => new Date().toLocaleDateString('sv-SE');
+const hash = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
+const seeded = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const avg = a => a.length ? a.reduce((s, x) => s + x[2], 0) / a.length : 0;
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+
+let G = null, rolling = false, shown = [];
+
+function start(daily) {
+  const done = store.get('dado_daily', null);
+  if (daily && done && done.date === today()) { G = { daily, over: true, res: done.res, team: done.team, phase: 'result' }; shown = done.res.evs; return render(); }
+  G = { daily, R: daily ? seeded(hash('dado' + today())) : Math.random, deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] }, picked: new Set(), n: 0, cur: null, phase: 'roll' };
+  shown = []; render();
+}
+function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const elig = (s) => s.p.filter(x => !G.picked.has(x[0]) && G.team[x[1]].length < F[x[1]]);
+function draw() {
+  for (let k = 0; k < 50; k++) {
+    if (!G.deck.length) G.deck = shuffle(SQUADS.map((_, i) => i), G.R);
+    const s = SQUADS[G.deck.pop()];
+    if (elig(s).length) return s;
+  }
+}
+function roll() {
+  if (rolling) return; rolling = true;
+  const final = draw(), faces = '⚀⚁⚂⚃⚄⚅'; let i = 0;
+  const iv = setInterval(() => {
+    const f = SQUADS[Math.floor(Math.random() * SQUADS.length)];
+    $('main').innerHTML = `<div class="dice">${faces[i++ % 6]}</div><div class="big">${esc(f.t)} ${f.y}</div>`;
+  }, 90);
+  setTimeout(() => { clearInterval(iv); rolling = false; G.cur = final; G.phase = 'pick'; render(); }, 900);
+}
+function pick(nm) {
+  const x = G.cur.p.find(y => y[0] === nm); if (!x) return;
+  G.team[x[1]].push(x); G.picked.add(nm); G.n++; G.cur = null;
+  if (G.n === 11) return finish();
+  G.phase = 'roll'; render();
+}
+function pois(l, R) { const L = Math.exp(-l); let k = 0, p = 1; do { k++; p *= R(); } while (p > L); return k - 1; }
+function finish() {
+  const T = G.team, R = G.R;
+  const off = avg(T.ATT) * .5 + avg(T.MID) * .3 + avg(T.DEF) * .2, def = avg(T.GK) * .3 + avg(T.DEF) * .45 + avg(T.MID) * .25;
+  const gf = pois(2.2 * Math.exp((off - 78) / 10), R), ga = pois(1.3 * Math.exp((78 - def) / 10), R);
+  const pool = [...T.ATT.map(x => [x, 5]), ...T.MID.map(x => [x, 2]), ...T.DEF.map(x => [x, .5])], tot = pool.reduce((s, x) => s + x[1], 0);
+  const scorer = () => { let r = R() * tot; for (const [x, w] of pool) if ((r -= w) <= 0) return x[0]; return pool[0][0][0]; };
+  const evs = [];
+  for (let i = 0; i < gf; i++) evs.push({ m: 1 + Math.floor(R() * 90), us: 1, who: scorer() });
+  for (let i = 0; i < ga; i++) evs.push({ m: 1 + Math.floor(R() * 90), us: 0, who: 'Adversário' });
+  evs.sort((a, b) => a.m - b.m);
+  const rating = Math.round((off + def) / 2 * 10) / 10;
+  G.res = { gf, ga, evs, rating, date: today(), daily: G.daily };
+  G.phase = 'result'; shown = []; render();
+  const rk = store.get('dado_rank', []); rk.push({ gf, ga, rating, date: today(), daily: G.daily });
+  rk.sort((a, b) => (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf); store.set('dado_rank', rk.slice(0, 10));
+  if (G.daily) store.set('dado_daily', { date: today(), res: G.res, team: G.team });
+  let i = 0; const iv = setInterval(() => { shown = evs.slice(0, ++i); renderResult(); if (i >= evs.length) { clearInterval(iv); G.over = true; renderResult(); renderRank(); } }, 700);
+  if (!evs.length) { G.over = true; renderResult(); renderRank(); }
+}
+
+function render() {
+  $('prog').textContent = G ? (G.daily ? 'Desafio do dia · ' : 'Jogo livre · ') + (G.phase === 'result' ? '11' : G.n) + '/11' : '';
+  let h = '';
+  if (!G) {
+    const d = store.get('dado_daily', null), doneToday = d && d.date === today();
+    h = `<h1 style="font-size:2.6rem">Dado da Copa</h1><p class="mu">Role o dado: sai uma seleção de uma Copa do Mundo. Escale um craque daquele elenco, complete os 11 e veja se seu time faz 7 a 0.</p>
+      <p><button class="pri" onclick="start(false)">Jogo livre</button> <button onclick="start(true)">Desafio do dia ${doneToday ? '(já jogado · ver resultado)' : '(mesmo sorteio para todos)'}</button></p>`;
+  } else if (G.phase === 'roll') {
+    h = `<p class="mu">Escalação ${G.n}/11</p><button class="pri" style="font-size:1.4rem" onclick="roll()">🎲 Rolar o dado</button>`;
+  } else if (G.phase === 'pick') {
+    h = `<div class="mu">Elenco sorteado</div><div class="big">${esc(G.cur.t)} ${G.cur.y}</div><p class="mu">Escolha um craque para uma vaga livre.</p>` +
+      ORDER.map(pos => `<div class="mu">${PN[pos]}s (${G.team[pos].length}/${F[pos]})</div><div class="pl">` + G.cur.p.filter(x => x[1] === pos).map(x => {
+        const ok = !G.picked.has(x[0]) && G.team[pos].length < F[pos];
+        return `<button ${ok ? '' : 'disabled'} onclick="pick(this.dataset.n)" data-n="${esc(x[0])}">${esc(x[0])} <b>${x[2]}</b></button>`;
+      }).join('') + '</div>').join('');
+  } else { h = '<div id="res"></div>'; }
+  $('main').innerHTML = h; pitch(); renderRank();
+  if (G && G.phase === 'result') renderResult();
+}
+function renderResult() {
+  const r = G.res, gf = shown.filter(e => e.us).length, ga = shown.length - gf, fin = G.over;
+  const perfect = fin && r.gf >= 7 && r.ga === 0;
+  $('res').innerHTML = `<div class="mu">Seu time vs Adversário · nota do time ${r.rating}</div>
+    <div class="big" style="font-size:4.5rem">${fin ? r.gf : gf} x ${fin ? r.ga : ga}</div>
+    <ol>${shown.map(e => `<li class="${e.us ? 'ok' : 'bad'}">${e.m}' ${esc(e.who)}${e.us ? '' : ' (gol contra você)'}</li>`).join('')}</ol>` +
+    (fin ? `<h2 style="font-size:1.8rem;margin:.6rem 0">${perfect ? '7 a 0! Goleada perfeita 🏆' : r.gf - r.ga >= 4 ? 'Que goleada! 🔥' : r.gf > r.ga ? 'Vitória!' : r.gf === r.ga ? 'Empate...' : 'Derrota 😬'}</h2>
+    <button class="pri" onclick="share()">Copiar resultado</button> <button onclick="G=null;render()">Voltar</button>` : '');
+}
+function share() {
+  const r = G.res, t = `Dado da Copa ${G.daily ? today() : ''}: meu time fez ${r.gf} x ${r.ga} (nota ${r.rating}). Consegue fazer 7 a 0? ${location.origin}/dado`;
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => alert('Copiado!'), () => prompt('Copie:', t));
+}
+function pitch() {
+  const T = G ? G.team : { GK: [], DEF: [], MID: [], ATT: [] };
+  $('pitch').innerHTML = '<div class="field">' + ['ATT', 'MID', 'DEF', 'GK'].map(pos => '<div class="row">' + Array.from({ length: F[pos] }, (_, i) => {
+    const x = T[pos][i];
+    return x ? `<div class="sl" title="${esc(x[0])}"><div class="dot f">${x[2]}</div><small>${esc(x[0])}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>';
+  }).join('') + '</div>').join('') + '</div>';
+}
+function renderRank() {
+  const rk = store.get('dado_rank', []);
+  $('rank').innerHTML = '<h2 style="font-size:1.6rem">Melhores placares (neste aparelho)</h2>' + (rk.length ?
+    '<ol>' + rk.map(r => `<li><b>${r.gf} x ${r.ga}</b> <span class="mu">· nota ${r.rating} · ${r.date}${r.daily ? ' · desafio' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma partida ainda.</p>');
+}
+render();
+</script></body></html>
