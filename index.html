@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#080d0b">
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
 <meta name="description" content="Resenha do Fut: leilão de craques com os amigos e desafios de futebol. Escolha seu jogo e venha para a resenha.">
 <title>Resenha do Fut — Futebol é melhor na resenha</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,9 +22,8 @@ a:focus-visible{outline:3px solid var(--lime);outline-offset:4px}
 .app{min-height:100vh;overflow:hidden;background:radial-gradient(ellipse at 82% -5%,rgba(168,255,63,.13),transparent 34%),var(--bg)}
 .nav{height:82px;display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #26332b}
 .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.6px}
-.brand-icon{width:43px;height:49px;display:grid;place-items:center;position:relative;clip-path:polygon(50% 0,94% 17%,86% 72%,50% 100%,14% 72%,6% 17%);background:var(--lime);color:#101810;font-size:24px}
-.brand-icon:before{content:"";position:absolute;inset:3px;clip-path:polygon(50% 0,94% 17%,86% 72%,50% 100%,14% 72%,6% 17%);background:#111a13}
-.brand-icon span{position:relative;z-index:1}
+.brand-icon{width:52px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.brand-logo{display:block;width:100%;height:100%;object-fit:contain}
 .brand-name{font-size:17px;line-height:1.02}
 .brand-name span{color:var(--lime);font-family:"Barlow Condensed",Impact,sans-serif;font-style:italic;font-size:21px;letter-spacing:.3px}
 .navlinks{display:flex;align-items:center;gap:26px;color:#b7c0b9;font-size:13px;font-weight:600}
@@ -85,7 +86,7 @@ h1,h2,h3,p{margin-top:0}
 <body>
 <main class="app" id="top">
 <header class="wrap nav">
-<a class="brand" href="/" aria-label="Resenha do Fut - início"><div class="brand-icon"><span>⚽</span></div><div class="brand-name">RESENHA<br><span>DO FUT.</span></div></a>
+<a class="brand" href="/" aria-label="Resenha do Fut - início"><div class="brand-icon"><img class="brand-logo" src="/logo.png" alt="Logo Resenha do Fut"></div><div class="brand-name">RESENHA<br><span>DO FUT.</span></div></a>
 <nav class="navlinks" aria-label="Navegação principal"><a href="#jogos">Jogos</a><a href="#extras">A plataforma</a><a href="#sobre">Sobre</a><a class="nav-cta" href="#jogos">Jogar agora ↗</a></nav>
 </header>
 <section class="wrap hero">
