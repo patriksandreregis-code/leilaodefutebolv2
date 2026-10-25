@@ -1,14 +1,24 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dado da Copa</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<title>Dado da Copa — Resenha do Fut</title>
+<meta name="theme-color" content="#080d0b">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="icon" href="/favicon.ico">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="description" content="Dado da Copa do Resenha do Fut: escale craques sorteados e tente conquistar a Copa.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e2a47;--card:#143a5e;--line:#2a5782;--tx:#f2f6fa;--mu:#9bb6d1;--ac:#ffb703;--ok:#4ad295;--bad:#ff6b6b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 Barlow,system-ui,sans-serif}
-h1,h2,.big{font-family:'Barlow Condensed','Arial Narrow',sans-serif;margin:0}
-button{font:inherit;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:.6rem 1rem;cursor:pointer;font-weight:600}
+:root{--bg:#080d0b;--card:#101713;--line:#29372d;--tx:#f4f6f4;--mu:#a6b0a8;--ac:#a8ff3f;--ok:#4ad295;--bad:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 82% -5%,rgba(168,255,63,.12),transparent 34%),var(--bg);color:var(--tx);font:16px/1.55 Inter,system-ui,sans-serif}
+h1,h2,.big{font-family:'Barlow Condensed',Impact,'Arial Narrow',sans-serif;margin:0}
+button{font:inherit;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:.65rem 1rem;cursor:pointer;font-weight:700}
 button.pri{background:var(--ac);color:#241a00;border-color:var(--ac)}button:disabled{opacity:.35;cursor:not-allowed}
 button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b}.site-brand{display:flex;align-items:center;gap:12px;color:var(--tx);font-weight:900;letter-spacing:-.6px;text-decoration:none}.site-brand-icon{width:52px;height:56px;display:block;object-fit:contain}.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--ac);font-family:'Barlow Condensed',Impact,sans-serif;font-style:italic;font-size:21px;letter-spacing:.3px}.site-nav{display:flex;align-items:center;gap:20px;font-size:13px;font-weight:700}.site-nav a{color:var(--mu);text-decoration:none}.site-nav a:hover{color:var(--ac)}.site-nav .home-cta{background:var(--ac);color:#101810;padding:10px 14px;border-radius:9px}@media(max-width:600px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-nav{gap:9px}.site-nav a:not(.home-cta){display:none}.site-brand-name{font-size:15px}}
 .wrap{max-width:1000px;margin:0 auto;padding:1rem}.mu{color:var(--mu)}.ok{color:var(--ok)}.bad{color:var(--bad)}
 a{color:var(--mu)}.top{display:flex;justify-content:space-between;margin-bottom:1rem}
 .grid{display:grid;grid-template-columns:3fr 2fr;gap:1rem}@media(max-width:760px){.grid{grid-template-columns:1fr}}
@@ -17,7 +27,7 @@ a{color:var(--mu)}.top{display:flex;justify-content:space-between;margin-bottom:
 .dice{font-size:4rem;line-height:1}
 .pl{display:flex;flex-wrap:wrap;gap:.5rem;margin:.4rem 0 1rem}
 .pl button{display:flex;gap:.5rem;align-items:center}.pl b{color:var(--ac)}
-.field{position:relative;display:flex;flex-direction:column;justify-content:space-around;height:380px;padding:.6rem;background:#1f7a4a linear-gradient(#e8f5ec,#e8f5ec) center/100% 2px no-repeat;border:2px solid #e8f5ec;border-radius:8px}
+.field{position:relative;display:flex;flex-direction:column;justify-content:space-around;height:380px;padding:.6rem;background:#1d633b linear-gradient(#e8f5ec,#e8f5ec) center/100% 2px no-repeat;border:2px solid #e8f5ec;border-radius:8px}
 .field::after{content:'';position:absolute;left:50%;top:50%;width:72px;height:72px;border:2px solid #e8f5ec;border-radius:50%;transform:translate(-50%,-50%)}
 .row{display:flex;justify-content:space-around;position:relative;z-index:1}.sl{width:76px;text-align:center}
 .dot{width:42px;height:42px;border-radius:50%;margin:0 auto;border:2px dashed #e8f5eccc;display:grid;place-items:center;font-weight:700}
@@ -31,7 +41,8 @@ ol{margin:.3rem 0;padding-left:1.3rem}
 table{width:100%;border-collapse:collapse;margin-top:.5rem;font-size:.9rem}td,th{padding:.25rem .4rem;text-align:left}tr.me{color:var(--ok);font-weight:700}
 .sl{flex:1;max-width:76px;width:auto}
 </style></head>
-<body><div class="wrap">
+<body>
+<header class="site-header"><a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<span>DO FUT.</span></span></a><nav class="site-nav" aria-label="Navegação principal"><a href="/">Início</a><a href="/leilao">Leilão</a><a href="/dado">Dado da Copa</a><a class="home-cta" href="/">Menu de jogos ↗</a></nav></header><div class="wrap">
 <div class="top"><a href="/">← Menu</a><span class="mu" id="prog"></span></div>
 <div class="grid">
   <div><div class="panel" id="main"></div><div class="panel" id="rank"></div></div>
