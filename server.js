@@ -157,11 +157,11 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js' };
+const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png' };
 const server = http.createServer((q, s) => {
   const f = FILES[new URL(q.url, 'http://x').pathname];
   if (!f) { s.writeHead(404); return s.end('404'); }
-  fs.readFile(path.join(__dirname, f), (e, d) => { s.writeHead(200, { 'Content-Type': f.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8' }); s.end(d); });
+  fs.readFile(path.join(__dirname, f), (e, d) => { if (e) { s.writeHead(404); return s.end('404'); } const type = f.endsWith('.js') ? 'text/javascript; charset=utf-8' : f.endsWith('.png') ? 'image/png' : 'text/html; charset=utf-8'; s.writeHead(200, { 'Content-Type': type }); s.end(d); });
 });
 const wss = new WebSocketServer({ server });
 
