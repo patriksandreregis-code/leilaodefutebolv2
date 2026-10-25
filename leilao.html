@@ -86,6 +86,8 @@ details{margin:.3rem 0}summary{cursor:pointer}
 <script>
 const $ = id => document.getElementById(id);
 const PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' };
+const ROLE = { GOL: 'Goleiro', ZAG: 'Zagueiro', LD: 'Lateral-direito', LE: 'Lateral-esquerdo', VOL: 'Volante', MC: 'Meio-campista', MEI: 'Meia-atacante', PE: 'Ponta-esquerda', PD: 'Ponta-direita', CA: 'Centroavante' };
+const tag = x => x.club ? ` <span class="mu">(${esc(x.role)} · ${esc(x.club)})</span>` : '';
 const PK = { todos: 'Todos (atuais + lendas)', atuais: 'Só craques atuais', lendas: 'Só lendas' };
 let ws, S = null, name = '', room = '', voice = true, sfx = true, viewId = null, ac = null;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -177,7 +179,7 @@ function render() {
   else if (!S.lot) h = warnHtml() + `<h2 style="font-size:2.2rem">Preparando o próximo jogador…</h2>`;
   else {
     const l = S.lot, can = me.need[l.pos] > 0 && l.bidder !== me.id;
-    h = warnHtml() + `<div class="lot"><span class="pos">${PN[l.pos]}</span><h1>${esc(l.n)}</h1><div class="mu">Nota ${l.r}</div>
+    h = warnHtml() + `<div class="lot"><span class="pos">${l.role ? esc(ROLE[l.role]) : PN[l.pos]}</span>${l.club ? ` <span class="pos" style="background:#2a5782;color:var(--tx)">${esc(l.club)}</span>` : ''}<h1>${esc(l.n)}</h1><div class="mu">Nota ${l.r}</div>
       <div class="big">€ ${l.bidder ? l.bid : l.base}M</div>
       <div>${l.bidder ? `Maior lance: <b>${esc(nm(l.bidder))}</b>` : 'Ninguém deu lance ainda'}</div>
       <div class="track"><div id="bar"></div></div><div id="tm" class="mu"></div>
@@ -189,7 +191,7 @@ function render() {
   $('main').innerHTML = h;
   $('players').innerHTML = S.players.map(p => `<div class="pl ${p.id === S.you ? 'me' : ''}"><b>${esc(p.name)}</b>${p.id === S.host ? ' 👑' : ''}${p.on ? '' : ' <span class="bad">(offline)</span>'}
     <span class="mu" style="float:right">€ ${p.budget}M · ${p.squad.length}/${S.total}${isHost && p.id !== S.you ? `<button class="x" title="Tornar anfitrião" onclick="send({t:'host',id:'${p.id}'})">👑</button><button class="x" title="Remover da sala" onclick="if(confirm('Remover ${esc(p.name)} da sala?'))send({t:'kick',id:'${p.id}'})">✕</button>` : ''}</span><br>
-    ${p.squad.map(x => `<span class="chip">${esc(x.n)} · ${x.price}M</span>`).join('') || '<span class="mu">Sem jogadores</span>'}</div>`).join('') +
+    ${p.squad.map(x => `<span class="chip">${esc(x.n)} · ${x.price}M${tag(x)}</span>`).join('') || '<span class="mu">Sem jogadores</span>'}</div>`).join('') +
     (isHost && S.players.some(p => !p.on) ? `<button style="margin-top:.6rem" onclick="send({t:'kickOffline'})">Remover jogadores offline</button>` : '');
   pitch();
   const cl = $('chatlog'), near = cl.scrollHeight - cl.scrollTop - cl.clientHeight < 40;
@@ -206,12 +208,12 @@ function bidFree() { const v = Math.floor(+$('amt').value); if (!(v > 0)) return
 function sendChat() { const i = $('chatin'), t = i.value.trim(); if (t) send({ t: 'chat', text: t }); i.value = ''; }
 
 function endHtml(isHost) {
-  const rk = [...S.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget), deal = d => `<tr><td><b>${esc(d.n)}</b> <span class="mu">(nota ${d.r})</span></td><td>${esc(d.buyer)}</td><td>€ ${d.price}M</td><td class="${d.v >= 0 ? 'ok' : 'bad'}">${d.v >= 0 ? 'economizou ' + d.v : 'pagou a mais ' + (-d.v)}M</td></tr>`;
+  const rk = [...S.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget), deal = d => `<tr><td><b>${esc(d.n)}</b> <span class="mu">(nota ${d.r})</span>${tag(d)}</td><td>${esc(d.buyer)}</td><td>€ ${d.price}M</td><td class="${d.v >= 0 ? 'ok' : 'bad'}">${d.v >= 0 ? 'economizou ' + d.v : 'pagou a mais ' + (-d.v)}M</td></tr>`;
   let h = `<h2 style="font-size:2.2rem">Resultado do leilão</h2><table>${rk.map((p, i) => `<tr><td><b>${i + 1}º ${esc(p.name)}</b><br><span class="mu">Nota total ${score(p)} · sobrou € ${p.budget}M</span></td>
     <td>${p.squad.map(x => `<span class="chip">${esc(x.n)} ${x.r}</span>`).join('')}</td></tr>`).join('')}</table>`;
   if (S.sales.length) h += `<h2 style="font-size:1.5rem;margin-top:1rem">Melhores negócios</h2><table>${S.best.map(deal).join('')}</table>
     <h2 style="font-size:1.5rem;margin-top:1rem">Piores negócios</h2><table>${S.worst.map(deal).join('')}</table>
-    <details><summary class="mu">Todas as vendas (${S.sales.length})</summary><table>${S.sales.map(d => `<tr><td>${esc(d.n)}</td><td>${esc(d.buyer)}</td><td>€ ${d.price}M</td></tr>`).join('')}</table></details>`;
+    <details><summary class="mu">Todas as vendas (${S.sales.length})</summary><table>${S.sales.map(d => `<tr><td>${esc(d.n)}${tag(d)}</td><td>${esc(d.buyer)}</td><td>€ ${d.price}M</td></tr>`).join('')}</table></details>`;
   if (S.copaRes) h += `<h2 style="font-size:1.5rem;margin-top:1rem">Copa do Mundo simulada</h2><table>${S.copaRes.map((c, i) => `<tr><td><b>${i + 1}º ${esc(c.name)}</b><br><span class="${c.champ ? 'ok' : 'mu'}">${c.champ ? '🏆 Campeão do mundo' : 'Eliminado: ' + esc(c.out)}</span></td>
     <td>${c.wins}V · ${c.gf}x${c.ga} gols<details><summary class="mu">jogos</summary>${c.matches.map(m => `<div class="${m.won ? 'ok' : m.draw ? '' : 'bad'}">${esc(m.stage)}: ${esc(m.opp)} ${m.gf}–${m.ga}${m.pen ? ' (pên)' : ''}</div>`).join('')}</details></td></tr>`).join('')}</table>`;
   if (S.torneio) h += torneioHtml();
@@ -231,7 +233,7 @@ function pitch() {
   const id = S.players.some(p => p.id === viewId) ? viewId : S.you, p = S.players.find(x => x.id === id);
   const rows = ['ATT', 'MID', 'DEF', 'GK'].map(pos => { const got = p.squad.filter(x => x.pos === pos);
     return '<div class="fr">' + Array.from({ length: S.slots[pos] }, (_, i) => { const x = got[i];
-      return x ? `<div class="sl" title="${esc(x.n)} · € ${x.price}M"><div class="dot f">${x.r}</div><small>${esc(x.n)}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>'; }).join('') + '</div>'; }).join('');
+      return x ? `<div class="sl" title="${esc(x.n)}${x.club ? ' — ' + esc(ROLE[x.role]) + ', ' + esc(x.club) : ''} · € ${x.price}M"><div class="dot f">${x.r}</div><small>${esc(x.n)}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>'; }).join('') + '</div>'; }).join('');
   const spent = p.squad.reduce((s, x) => s + x.price, 0), st = (l, v, c = '') => `<div style="flex:1;min-width:5.5rem;background:#0b2036;border-radius:6px;padding:.3rem .5rem"><div class="mu" style="font-size:.75rem">${l}</div><b class="${c}" style="font-size:1.15rem">${v}</b></div>`;
   $('pitch').innerHTML = `<div class="tabs">${S.players.map(q => `<button class="${q.id === id ? 'pri' : ''}" onclick="viewId='${q.id}';render()">${esc(q.name)}</button>`).join('')}</div>
     <div class="row" style="margin:0 0 .6rem;flex-wrap:nowrap">${st('Disponível', '€ ' + p.budget + 'M', 'ok')}${st('Gasto', '€ ' + spent + 'M')}${st('Nota do time', score(p))}${st('Formação', S.cfg.form)}</div>

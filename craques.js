@@ -18,5 +18,8 @@ const POOL = Object.entries(RAW).flatMap(([pos, s]) => s.split(',').map(x => {
   const w = x.trim().split(/\s+/), era = w.pop(), r = +w.pop();
   return [w.join(' '), pos, r, era];
 }));
-if (new Set(POOL.map(x => x[0])).size !== POOL.length) console.warn('Craque repetido na base!');
+
+POOL.push(...require('./brasileirao.js'));
+const dup = POOL.map(x => x[3] + ':' + x[0]).filter((n, i, arr) => arr.indexOf(n) !== i);
+if (dup.length) console.warn('Craque repetido na mesma época:', dup);
 module.exports = POOL;

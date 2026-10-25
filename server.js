@@ -8,7 +8,8 @@ try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'u
 const FORMS = { 7: ['2-3-1', '3-2-1', '2-2-2'], 8: ['3-3-1', '2-3-2', '3-2-2'], 9: ['3-3-2', '4-3-1', '3-4-1'], 10: ['4-3-2', '3-4-2', '4-4-1', '3-3-3'], 11: ['4-3-3', '4-4-2', '3-5-2', '5-3-2', '4-5-1', '3-4-3'] };
 const OPT = { budget: [100, 150, 200, 300, 500], size: [7, 8, 9, 10, 11], bidSec: [8, 12, 15, 20, 30], fmt: [32, 48] };
 // Pacotes de craques (checkboxes na sala). Para criar um novo: adicione aqui e marque a "época" dos craques em craques.js.
-const PACKS = [{ id: 'atuais', label: 'Craques atuais', era: 'A' }, { id: 'lendas', label: 'Lendas', era: 'L' }];
+const PACKS = [{ id: 'atuais', label: 'Craques atuais', era: 'A' }, { id: 'lendas', label: 'Lendas', era: 'L' }, { id: 'brasileirao', label: 'Brasileirão 2026 (mostra posição e clube)', era: 'B' }];
+const ROLE = { GOL: 'goleiro', ZAG: 'zagueiro', LD: 'lateral-direito', LE: 'lateral-esquerdo', VOL: 'volante', MC: 'meio-campista', MEI: 'meia-atacante', PE: 'ponta-esquerda', PD: 'ponta-direita', CA: 'centroavante' };
 // Moderação do chat: palavras ofensivas viram ***
 const BAD = new Set(`porra caralho carai merda bosta foda foder fodido fodida fodase puta puto putaria fdp vsf vtnc tnc pqp cu cuzao buceta viado viada otario otaria idiota imbecil babaca arrombado arrombada corno corna escroto escrota vagabundo vagabunda cacete piranha vadia retardado mongol macaco desgracado nazista`.split(' ').map(w => norm(w)));
 function norm(w) { return w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[@4]/g, 'a').replace(/3/g, 'e').replace(/1/g, 'i').replace(/0/g, 'o').replace(/[$5]/g, 's').replace(/(.)\1+/g, '$1'); }
@@ -19,6 +20,7 @@ const PL = { GK: 'goleiros', DEF: 'defensores', MID: 'meias', ATT: 'atacantes' }
 const MAX_PLAYERS = 8, RESET_MS = 6000 / T;
 const FILE = path.join(process.env.DATA_DIR || __dirname, 'salas.json');
 
+const mi = n => n === 1 ? '1 milhão' : n + ' milhões';
 const rooms = {};
 const DEFAULT_CFG = { budget: 200, size: 9, form: '3-3-2', bidSec: 12, packs: ['atuais', 'lendas'], copa: false, torneio: false, fmt: 48 };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -50,7 +52,7 @@ function view(r) {
     log: r.log.slice(-6), chat: r.chat.slice(-30),
     players: r.players.map(p => ({ id: p.id, name: p.name, budget: p.budget, squad: p.squad, on: !!p.ws, max: maxBid(r, p),
       need: Object.fromEntries(Object.keys(slotsOf(r)).map(k => [k, need(r, p, k)])) })),
-    lot: r.lot && { n: r.lot.n, pos: r.lot.pos, r: r.lot.r, base: baseOf(r, r.lot.r, r.lot), floor: floorOf(r, r.lot.r, r.lot), bid: r.lot.bid, bidder: r.lot.bidder,
+    lot: r.lot && { n: r.lot.n, pos: r.lot.pos, r: r.lot.r, club: r.lot.club, role: r.lot.role, base: baseOf(r, r.lot.r, r.lot), floor: floorOf(r, r.lot.r, r.lot), bid: r.lot.bid, bidder: r.lot.bidder,
       left: r.lot.end - Date.now(), skips: r.lot.skips, skipNeed: r.players.filter(x => x.ws && need(r, x, r.lot.pos) > 0).length },
   };
   if (r.phase === 'end') {
@@ -113,8 +115,8 @@ function nextLot(r) {
     if (r.cfg.torneio) runTorneio(r);
     return say(r, `Fim do leilão! O melhor time é de ${w ? w.name : '—'}!`, 'sold');
   }
-  r.lot = { n: x[0], pos: x[1], r: x[2], bid: 0, bidder: null, hist: [], skips: [], round: r.round, end: Date.now() + bidMs(r) };
-  say(r, `Próximo jogador: ${x[0]}, ${NAME[x[1]]}, nota ${x[2]}. Lance inicial: ${baseOf(r, x[2], r.lot)} milhões!`, 'gavel');
+  r.lot = { n: x[0], pos: x[1], r: x[2], club: x[3], role: x[4], bid: 0, bidder: null, hist: [], skips: [], round: r.round, end: Date.now() + bidMs(r) };
+  say(r, `Próximo jogador: ${x[0]}, ${x[4] ? ROLE[x[4]] + ', ' + x[3] : NAME[x[1]]}, nota ${x[2]}. Lance inicial: ${mi(baseOf(r, x[2], r.lot))}!`, 'gavel');
   for (const w of stockWarn(r)) if (!r.warned[w.pos]) { r.warned[w.pos] = 1; say(r, w.crit ? `Atenção! Faltam ${PL[w.pos]}: só restam ${w.left} para ${w.need} vagas.` : `Atenção! Estão acabando os ${PL[w.pos]}: restam ${w.left} para ${w.need} vagas.`); }
   arm(r);
 }
@@ -123,10 +125,10 @@ function close(r) {
   const l = r.lot; if (!l) return; r.lot = null;
   const p = l.bidder && r.players.find(x => x.id === l.bidder);
   if (p) {
-    p.budget -= l.bid; p.squad.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid });
-    r.sales.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid, buyer: p.name });
-    say(r, `Vendido! ${l.n} vai para ${p.name} por ${l.bid} milhões!`, 'sold');
-  } else { r.unsold.push([l.n, l.pos, l.r]); say(r, `Ninguém quis ${l.n}. Vamos ao próximo!`, 'pass'); }
+    p.budget -= l.bid; p.squad.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid, club: l.club, role: l.role });
+    r.sales.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid, buyer: p.name, club: l.club, role: l.role });
+    say(r, `Vendido! ${l.n} vai para ${p.name} por ${mi(l.bid)}!`, 'sold');
+  } else { r.unsold.push([l.n, l.pos, l.r, l.club, l.role]); say(r, `Ninguém quis ${l.n}. Vamos ao próximo!`, 'pass'); }
   setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3500 / T);
 }
 function runTorneio(r) {
@@ -194,13 +196,14 @@ wss.on('connection', ws => {
       }
       bc(r);
     } else if (m.t === 'start' && p.id === r.host && r.phase === 'lobby') {
-      const sl = slotsOf(r), eras = PACKS.filter(k => r.cfg.packs.includes(k.id)).map(k => k.era), pool = POOL.filter(x => eras.includes(x[3]));
+      const sl = slotsOf(r), eras = PACKS.filter(k => r.cfg.packs.includes(k.id)).map(k => k.era), pool0 = POOL.filter(x => eras.includes(x[3])),
+        bNames = new Set(pool0.filter(x => x[3] === 'B').map(x => x[0])), pool = pool0.filter(x => x[3] === 'B' || !bNames.has(x[0])); // mesma pessoa em dois pacotes: vale a versão do Brasileirão
       for (const pos of Object.keys(sl)) {
         const have = pool.filter(x => x[1] === pos).length, want = r.players.length * sl[pos];
         if (have < want) return err(`Não há craques suficientes: faltam ${PL[pos]} (${have} disponíveis para ${want} vagas). Marque mais pacotes de craques, use menos jogadores ou outra formação.`);
       }
       r.phase = 'auction'; r.log = []; r.sales = []; r.copaRes = null; r.torneio = null; r.unsold = []; r.round = 1; r.warned = {};
-      r.queue = shuffle(pool.map(x => [x[0], x[1], x[2]]));
+      r.queue = shuffle(pool.map(x => [x[0], x[1], x[2], x[4], x[5]]));
       say(r, 'O leilão vai começar! Boa sorte, cartolas!', 'gavel');
       setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3000 / T);
     } else if (m.t === 'again' && p.id === r.host && r.phase === 'end') {
@@ -222,7 +225,7 @@ wss.on('connection', ws => {
       const l = r.lot, a = Math.floor(+m.amount);
       if (!l || !(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < (l.bidder ? l.bid + 1 : floorOf(r, l.r, l))) return err(`Lance inválido: mínimo € ${l.bidder ? l.bid + 1 : floorOf(r, l.r, l)}M, máximo € ${maxBid(r, p)}M.`);
       l.bid = a; l.bidder = p.id; l.hist.push({ bidder: p.id, bid: a }); l.end = Math.max(l.end, Date.now() + RESET_MS); arm(r);
-      say(r, `${p.name} dá ${a} milhões por ${l.n}!`, 'bid');
+      say(r, `${p.name} dá ${mi(a)} por ${l.n}!`, 'bid');
     }
   });
   ws.on('close', () => {
