@@ -112,7 +112,7 @@ function play(a, b, R) {
   return { gf: ga, ga: gb, us: goals(ga, a.pool, R), them: goals(gb, b.pool, R) };
 }
 function simulate() {
-  const lineup = ORDER.flatMap(p => G.team[p]), st = cfg.style - 1, d = cfg.diff * 3;
+  const lineup = ORDER.flatMap(p => G.team[p]), st = cfg.style - 1, d = cfg.diff * 2;
   const R = seeded(hash(G.seed + lineup.map(x => x[0]).join()));
   const me = { name: 'Seu time', s: strength(lineup), pool: poolOf(lineup) };
   me.s.off += st * 2; me.s.def -= st * 2;
