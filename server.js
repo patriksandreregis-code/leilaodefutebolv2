@@ -7,7 +7,12 @@ try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'u
 // ===== Opções que o anfitrião pode mudar =====
 const FORMS = { 7: ['2-3-1', '3-2-1', '2-2-2'], 8: ['3-3-1', '2-3-2', '3-2-2'], 9: ['3-3-2', '4-3-1', '3-4-1'], 10: ['4-3-2', '3-4-2', '4-4-1', '3-3-3'], 11: ['4-3-3', '4-4-2', '3-5-2', '5-3-2', '4-5-1', '3-4-3'] };
 const OPT = { budget: [100, 150, 200, 300, 500], size: [7, 8, 9, 10, 11], bidSec: [8, 12, 15, 20, 30], fmt: [32, 48] };
-const PACK = ['todos', 'atuais', 'lendas'];
+// Pacotes de craques (checkboxes na sala). Para criar um novo: adicione aqui e marque a "época" dos craques em craques.js.
+const PACKS = [{ id: 'atuais', label: 'Craques atuais', era: 'A' }, { id: 'lendas', label: 'Lendas', era: 'L' }];
+// Moderação do chat: palavras ofensivas viram ***
+const BAD = new Set(`porra caralho carai merda bosta foda foder fodido fodida fodase puta puto putaria fdp vsf vtnc tnc pqp cu cuzao buceta viado viada otario otaria idiota imbecil babaca arrombado arrombada corno corna escroto escrota vagabundo vagabunda cacete piranha vadia retardado mongol macaco desgracado nazista`.split(' ').map(w => norm(w)));
+function norm(w) { return w.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[@4]/g, 'a').replace(/3/g, 'e').replace(/1/g, 'i').replace(/0/g, 'o').replace(/[$5]/g, 's').replace(/(.)\1+/g, '$1'); }
+const clean = t => t.replace(/[\p{L}\p{N}@$]+/gu, w => BAD.has(norm(w)) ? '*'.repeat(Math.max(3, w.length)) : w);
 const NAME = { GK: 'goleiro', DEF: 'defensor', MID: 'meia', ATT: 'atacante' };
 const T = +process.env.SPEEDUP || 1; // só para testes automáticos (acelera os tempos)
 const PL = { GK: 'goleiros', DEF: 'defensores', MID: 'meias', ATT: 'atacantes' };
@@ -15,11 +20,22 @@ const MAX_PLAYERS = 8, RESET_MS = 6000 / T;
 const FILE = path.join(process.env.DATA_DIR || __dirname, 'salas.json');
 
 const rooms = {};
+const DEFAULT_CFG = { budget: 200, size: 9, form: '3-3-2', bidSec: 12, packs: ['atuais', 'lendas'], copa: false, torneio: false, fmt: 48 };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 const slotsOf = r => { const [d, m, a] = r.cfg.form.split('-').map(Number); return { GK: 1, DEF: d, MID: m, ATT: a }; };
 const unit = r => r.cfg.budget / 200;
-const baseOf = (r, x) => Math.max(1, Math.round((x - 80) * unit(r)));
+const baseOf = (r, x, l) => { let b = Math.max(1, Math.round((x - 80) * unit(r))); if (l && l.round > 1) b = Math.max(1, Math.ceil(b / 2)); return b; }; // repescagem: preço pela metade
+const floorOf = (r, x, l) => Math.max(1, Math.ceil(baseOf(r, x, l) / 2)); // primeiro lance pode ser a metade do preço inicial
+const stockWarn = r => { // avisa quando estão acabando os craques de uma posição
+  const out = [];
+  for (const pos of Object.keys(slotsOf(r))) {
+    const nd = r.players.reduce((s, p) => s + Math.max(0, need(r, p, pos)), 0); if (!nd) continue;
+    const left = r.queue.filter(x => x[1] === pos).length + (r.lot && r.lot.pos === pos ? 1 : 0) + (r.round < 3 ? r.unsold.filter(x => x[1] === pos).length : 0);
+    if (left <= nd + 2) out.push({ pos, left, need: nd, crit: left < nd });
+  }
+  return out;
+};
 const fairOf = (r, x) => Math.max(1, Math.round((x - 78) * 2.2 * unit(r)));
 const need = (r, p, pos) => slotsOf(r)[pos] - p.squad.filter(x => x.pos === pos).length;
 const maxBid = (r, p) => { const rem = r.cfg.size - p.squad.length; return rem <= 0 ? 0 : p.budget - (rem - 1); };
@@ -30,16 +46,16 @@ const firstOnline = (r, but) => r.players.find(x => x.ws && x.id !== but);
 // ===== Estado enviado aos jogadores =====
 function view(r) {
   const v = {
-    code: r.code, phase: r.phase, host: r.host, cfg: r.cfg, slots: slotsOf(r), total: r.cfg.size, copaOk: SQUADS.length > 8,
+    code: r.code, phase: r.phase, host: r.host, cfg: r.cfg, slots: slotsOf(r), total: r.cfg.size, copaOk: SQUADS.length > 8, packs: PACKS, warn: r.phase === 'auction' ? stockWarn(r) : [], round: r.round,
     log: r.log.slice(-6), chat: r.chat.slice(-30),
     players: r.players.map(p => ({ id: p.id, name: p.name, budget: p.budget, squad: p.squad, on: !!p.ws, max: maxBid(r, p),
       need: Object.fromEntries(Object.keys(slotsOf(r)).map(k => [k, need(r, p, k)])) })),
-    lot: r.lot && { n: r.lot.n, pos: r.lot.pos, r: r.lot.r, base: baseOf(r, r.lot.r), bid: r.lot.bid, bidder: r.lot.bidder,
+    lot: r.lot && { n: r.lot.n, pos: r.lot.pos, r: r.lot.r, base: baseOf(r, r.lot.r, r.lot), floor: floorOf(r, r.lot.r, r.lot), bid: r.lot.bid, bidder: r.lot.bidder,
       left: r.lot.end - Date.now(), skips: r.lot.skips, skipNeed: r.players.filter(x => x.ws && need(r, x, r.lot.pos) > 0).length },
   };
   if (r.phase === 'end') {
     const d = r.sales.map(s => ({ ...s, fair: fairOf(r, s.r), v: fairOf(r, s.r) - s.price }));
-    v.sales = d; v.best = [...d].sort((a, b) => b.v - a.v).slice(0, 3); v.worst = [...d].sort((a, b) => a.v - b.v).slice(0, 3); v.copaRes = r.copaRes;
+    v.sales = d; v.best = [...d].sort((a, b) => b.v - a.v).slice(0, 3); v.worst = [...d].sort((a, b) => a.v - b.v).slice(0, 3); v.copaRes = r.copaRes; v.torneio = r.torneio;
   }
   return v;
 }
@@ -53,7 +69,7 @@ function save() {
   saveT = setTimeout(() => {
     try {
       fs.writeFileSync(FILE, JSON.stringify(Object.values(rooms).map(r => ({ code: r.code, phase: r.phase, host: r.host, cfg: r.cfg, queue: r.queue, lot: r.lot, log: r.log, chat: r.chat,
-        sales: r.sales, copaRes: r.copaRes, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, budget: p.budget, squad: p.squad })) }))));
+        sales: r.sales, copaRes: r.copaRes, torneio: r.torneio, unsold: r.unsold, round: r.round, warned: r.warned, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, budget: p.budget, squad: p.squad })) }))));
     } catch (e) {}
   }, 800);
 }
@@ -62,6 +78,7 @@ function restore() {
   for (const o of list) {
     if (Date.now() - (o.touched || 0) > 24 * 3600e3) continue;
     const r = rooms[o.code] = { ...o, players: o.players.map(p => ({ ...p, ws: null })), timer: null, timers: [] };
+    r.cfg = { ...DEFAULT_CFG, ...r.cfg }; r.unsold = r.unsold || []; r.round = r.round || 1; r.warned = r.warned || {};
     if (r.phase === 'auction') { if (r.lot) { r.lot.end = Date.now() + bidMs(r); arm(r); } else setTimeout(() => nextLot(r), 5000); }
   }
   console.log('Salas restauradas:', Object.keys(rooms).length);
@@ -79,15 +96,26 @@ function arm(r) {
 }
 function nextLot(r) {
   let x;
-  while ((x = r.queue.shift()) && !r.players.some(p => need(r, p, x[1]) > 0 && maxBid(r, p) >= baseOf(r, x[2])));
+  for (;;) { // pula craques que ninguém pode comprar; os que ninguém conseguiu pagar voltam na repescagem
+    x = r.queue.shift(); if (!x) break;
+    if (r.players.some(p => need(r, p, x[1]) > 0 && maxBid(r, p) >= floorOf(r, x[2], { round: r.round }))) break;
+    if (r.players.some(p => need(r, p, x[1]) > 0)) r.unsold.push(x);
+  }
   if (!x) {
+    if (r.players.some(p => p.squad.length < r.cfg.size) && r.unsold.length && r.round < 3) { // acabaram os craques: os não vendidos voltam
+      r.round++; r.queue = shuffle(r.unsold.splice(0)); r.warned = {};
+      say(r, `Rodada ${r.round}! Os craques que ficaram sem comprador voltam ao leilão com preço reduzido!`, 'gavel');
+      return void setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3500 / T);
+    }
     r.phase = 'end'; r.lot = null;
     const w = [...r.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
     if (r.cfg.copa && SQUADS.length > 8) runCopa(r);
+    if (r.cfg.torneio) runTorneio(r);
     return say(r, `Fim do leilão! O melhor time é de ${w ? w.name : '—'}!`, 'sold');
   }
-  r.lot = { n: x[0], pos: x[1], r: x[2], bid: 0, bidder: null, hist: [], skips: [], end: Date.now() + bidMs(r) };
-  say(r, `Próximo jogador: ${x[0]}, ${NAME[x[1]]}, nota ${x[2]}. Lance inicial: ${baseOf(r, x[2])} milhões!`, 'gavel');
+  r.lot = { n: x[0], pos: x[1], r: x[2], bid: 0, bidder: null, hist: [], skips: [], round: r.round, end: Date.now() + bidMs(r) };
+  say(r, `Próximo jogador: ${x[0]}, ${NAME[x[1]]}, nota ${x[2]}. Lance inicial: ${baseOf(r, x[2], r.lot)} milhões!`, 'gavel');
+  for (const w of stockWarn(r)) if (!r.warned[w.pos]) { r.warned[w.pos] = 1; say(r, w.crit ? `Atenção! Faltam ${PL[w.pos]}: só restam ${w.left} para ${w.need} vagas.` : `Atenção! Estão acabando os ${PL[w.pos]}: restam ${w.left} para ${w.need} vagas.`); }
   arm(r);
 }
 function close(r) {
@@ -98,8 +126,12 @@ function close(r) {
     p.budget -= l.bid; p.squad.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid });
     r.sales.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid, buyer: p.name });
     say(r, `Vendido! ${l.n} vai para ${p.name} por ${l.bid} milhões!`, 'sold');
-  } else say(r, `Ninguém quis ${l.n}. Vamos ao próximo!`, 'pass');
+  } else { r.unsold.push([l.n, l.pos, l.r]); say(r, `Ninguém quis ${l.n}. Vamos ao próximo!`, 'pass'); }
   setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3500 / T);
+}
+function runTorneio(r) {
+  const teams = r.players.filter(p => p.squad.length).map(p => ({ id: p.id, name: p.name, lineup: p.squad.map(x => [x.n, x.pos, x.r]) }));
+  if (teams.length > 1) r.torneio = copa.league(teams, r.code + Date.now());
 }
 function runCopa(r) {
   const out = r.players.filter(p => p.squad.length).map(p => {
@@ -139,8 +171,8 @@ wss.on('connection', ws => {
     if (m.t === 'join') {
       const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().slice(0, 16);
       if (!code || !name) return err('Informe seu nome e o código da sala.');
-      r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, banned: [],
-        cfg: { budget: 200, size: 9, form: '3-3-2', bidSec: 12, pool: 'todos', copa: false, fmt: 48 } });
+      if (clean(name) !== name) return err('Nome não permitido.');
+      r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, torneio: null, unsold: [], round: 1, warned: {}, banned: [], cfg: { ...DEFAULT_CFG } });
       if (r.banned.includes(name)) { r = null; return err('Você foi removido desta sala.'); }
       p = r.players.find(x => x.name === name); // mesmo nome = reconexão
       if (p) { p.ws = ws; }
@@ -152,7 +184,8 @@ wss.on('connection', ws => {
     else if (m.t === 'cfg' && p.id === r.host && r.phase === 'lobby') {
       const c = r.cfg, k = m.k, v = m.v;
       if (k === 'copa') c.copa = !!v;
-      else if (k === 'pool' && PACK.includes(v)) c.pool = v;
+      else if (k === 'torneio') c.torneio = !!v;
+      else if (k === 'packs') { const ids = (Array.isArray(v) ? v : []).filter(x => PACKS.some(p => p.id === x)); if (ids.length) c.packs = ids; }
       else if (k === 'form' && FORMS[c.size].includes(v)) c.form = v;
       else if (OPT[k] && OPT[k].includes(+v)) {
         c[k] = +v;
@@ -161,23 +194,24 @@ wss.on('connection', ws => {
       }
       bc(r);
     } else if (m.t === 'start' && p.id === r.host && r.phase === 'lobby') {
-      const sl = slotsOf(r), pool = POOL.filter(x => r.cfg.pool === 'todos' || (r.cfg.pool === 'atuais') === (x[3] === 'A'));
+      const sl = slotsOf(r), eras = PACKS.filter(k => r.cfg.packs.includes(k.id)).map(k => k.era), pool = POOL.filter(x => eras.includes(x[3]));
       for (const pos of Object.keys(sl)) {
         const have = pool.filter(x => x[1] === pos).length, want = r.players.length * sl[pos];
-        if (have < want) return err(`Não há craques suficientes: faltam ${PL[pos]} (${have} disponíveis para ${want} vagas). Use o pacote "todos", menos jogadores ou outra formação.`);
+        if (have < want) return err(`Não há craques suficientes: faltam ${PL[pos]} (${have} disponíveis para ${want} vagas). Marque mais pacotes de craques, use menos jogadores ou outra formação.`);
       }
-      r.phase = 'auction'; r.log = []; r.sales = []; r.copaRes = null;
+      r.phase = 'auction'; r.log = []; r.sales = []; r.copaRes = null; r.torneio = null; r.unsold = []; r.round = 1; r.warned = {};
       r.queue = shuffle(pool.map(x => [x[0], x[1], x[2]]));
       say(r, 'O leilão vai começar! Boa sorte, cartolas!', 'gavel');
       setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3000 / T);
     } else if (m.t === 'again' && p.id === r.host && r.phase === 'end') {
-      r.phase = 'lobby'; r.log = []; r.sales = []; r.copaRes = null; r.players.forEach(x => { x.budget = r.cfg.budget; x.squad = []; }); bc(r);
+      r.phase = 'lobby'; r.log = []; r.sales = []; r.copaRes = null; r.torneio = null; r.unsold = []; r.round = 1; r.warned = {}; r.players.forEach(x => { x.budget = r.cfg.budget; x.squad = []; }); bc(r);
     } else if (m.t === 'copa' && p.id === r.host && r.phase === 'end' && !r.copaRes && SQUADS.length > 8) { runCopa(r); bc(r); }
+    else if (m.t === 'torneio' && p.id === r.host && r.phase === 'end' && !r.torneio) { runTorneio(r); bc(r); }
     else if (m.t === 'kick' && p.id === r.host && m.id !== p.id) removePlayer(r, m.id, 'kick');
     else if (m.t === 'kickOffline' && p.id === r.host) r.players.filter(x => !x.ws && x.id !== p.id).forEach(x => removePlayer(r, x.id, 'kick'));
     else if (m.t === 'host' && p.id === r.host && r.players.some(x => x.id === m.id)) { r.host = m.id; say(r, `${r.players.find(x => x.id === m.id).name} agora é o anfitrião.`); }
     else if (m.t === 'chat') {
-      const t = String(m.text || '').trim().slice(0, 140), now = Date.now();
+      const t = clean(String(m.text || '').trim().slice(0, 140)), now = Date.now();
       if (!t || now - (p.lastChat || 0) < 600) return; p.lastChat = now;
       r.chat.push({ n: p.name, t }); if (r.chat.length > 60) r.chat.shift(); bc(r);
     } else if (m.t === 'skip') {
@@ -186,7 +220,7 @@ wss.on('connection', ws => {
       if (r.players.filter(x => x.ws && need(r, x, l.pos) > 0).every(x => l.skips.includes(x.id))) close(r); else bc(r);
     } else if (m.t === 'bid') {
       const l = r.lot, a = Math.floor(+m.amount);
-      if (!l || !(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < (l.bidder ? l.bid + 1 : baseOf(r, l.r))) return err('Lance inválido.');
+      if (!l || !(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < (l.bidder ? l.bid + 1 : floorOf(r, l.r, l))) return err(`Lance inválido: mínimo € ${l.bidder ? l.bid + 1 : floorOf(r, l.r, l)}M, máximo € ${maxBid(r, p)}M.`);
       l.bid = a; l.bidder = p.id; l.hist.push({ bidder: p.id, bid: a }); l.end = Math.max(l.end, Date.now() + RESET_MS); arm(r);
       say(r, `${p.name} dá ${a} milhões por ${l.n}!`, 'bid');
     }

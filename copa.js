@@ -46,4 +46,19 @@ function campaign(lineup, SQUADS, o = {}) {
     gf: M.reduce((s, m) => s + m.gf, 0), ga: M.reduce((s, m) => s + m.ga, 0), rating: Math.round((me.s.off + me.s.def) / 2 * 10) / 10,
     top: Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 3) } };
 }
-module.exports = { campaign };
+// Torneio entre os times montados no leilão. teams: [{ id, name, lineup }]
+function league(teams, seed) {
+  const R = seeded(hash(String(seed))), T = teams.map(t => ({ ...t, o: { s: strength(t.lineup), pool: poolOf(t.lineup) } }));
+  const mk = (a, b) => { const r = play(a.o, b.o, R); return { a: a.name, b: b.name, ga: r.gf, gb: r.ga, sa: r.us, sb: r.them }; };
+  const rows = T.map(t => ({ id: t.id, name: t.name, pts: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 })), matches = [];
+  if (T.length > 2) for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {
+    const m = mk(T[i], T[j]); matches.push(m);
+    rows[i].gf += m.ga; rows[i].ga += m.gb; rows[j].gf += m.gb; rows[j].ga += m.ga;
+    if (m.ga > m.gb) { rows[i].pts += 3; rows[i].w++; rows[j].l++; } else if (m.ga < m.gb) { rows[j].pts += 3; rows[j].w++; rows[i].l++; } else { rows[i].pts++; rows[j].pts++; rows[i].d++; rows[j].d++; }
+  }
+  const order = rows.map((r, i) => ({ ...r, i, gd: r.gf - r.ga })).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+  const f = mk(T[order[0].i], T[order[1].i]); f.pen = f.ga === f.gb;
+  f.winner = f.ga > f.gb ? f.a : f.ga < f.gb ? f.b : (R() < .5 ? f.a : f.b);
+  return { table: order.map(({ i, ...r }) => r), matches, final: f, champion: f.winner };
+}
+module.exports = { campaign, league };

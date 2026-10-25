@@ -78,7 +78,7 @@ details{margin:.3rem 0}summary{cursor:pointer}
     <div>
       <div class="panel" id="players"></div>
       <div class="panel"><div class="mu" style="font-size:.85rem;margin-bottom:.3rem">CHAT</div><div id="chatlog"></div>
-        <input id="chatin" maxlength="140" placeholder="Digite e tecle Enter" onkeydown="if(event.key==='Enter')sendChat()"></div>
+        <div class="row" style="margin:0"><input id="chatin" maxlength="140" placeholder="Digite sua mensagem" onkeydown="if(event.key==='Enter')sendChat()" style="flex:1;width:auto"><button onclick="sendChat()">Enviar</button></div></div>
     </div>
   </div>
 </div>
@@ -144,14 +144,25 @@ function fx(k) {
 function cfgHtml(host) {
   const c = S.cfg, forms = { 7: ['2-3-1', '3-2-1', '2-2-2'], 8: ['3-3-1', '2-3-2', '3-2-2'], 9: ['3-3-2', '4-3-1', '3-4-1'], 10: ['4-3-2', '3-4-2', '4-4-1', '3-3-3'], 11: ['4-3-3', '4-4-2', '3-5-2', '5-3-2', '4-5-1', '3-4-3'] };
   const sel = (k, opts, cur, f = x => x) => host ? `<select onchange="cfg('${k}',this.value)">${opts.map(o => `<option value="${o}" ${o == cur ? 'selected' : ''}>${f(o)}</option>`).join('')}</select>` : `<b>${f(cur)}</b>`;
+  const chk = (k, on, dis = false) => host ? `<input type="checkbox" style="width:auto" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''} onchange="cfg('${k}',this.checked)">` : `<b>${on ? 'Sim' : 'Não'}</b>`;
+  const packs = S.packs.map(k => host ? `<label style="display:block"><input type="checkbox" style="width:auto" ${c.packs.includes(k.id) ? 'checked' : ''} onchange="setPack('${k.id}',this.checked)"> ${esc(k.label)}</label>` : (c.packs.includes(k.id) ? `<div><b>${esc(k.label)}</b></div>` : '')).join('');
   return `<div class="cfg">
     <span>Orçamento</span>${sel('budget', [100, 150, 200, 300, 500], c.budget, x => '€ ' + x + 'M')}
     <span>Jogadores por time</span>${sel('size', [7, 8, 9, 10, 11], c.size)}
     <span>Formação</span>${sel('form', forms[c.size], c.form)}
     <span>Tempo por jogador</span>${sel('bidSec', [8, 12, 15, 20, 30], c.bidSec, x => x + 's')}
-    <span>Pacote de craques</span>${sel('pool', ['todos', 'atuais', 'lendas'], c.pool, x => PK[x])}
-    <span>Copa simulada no final</span>${host ? `<input type="checkbox" style="width:auto" ${c.copa ? 'checked' : ''} ${S.copaOk ? '' : 'disabled'} onchange="cfg('copa',this.checked)">` : `<b>${c.copa ? 'Sim' : 'Não'}</b>`}
+    <span>Pacotes de craques</span><div>${packs}</div>
+    <span>Torneio entre os times do leilão</span>${chk('torneio', c.torneio)}
+    <span>Copa do Mundo simulada</span>${chk('copa', c.copa, !S.copaOk)}
     ${c.copa ? `<span>Formato da Copa</span>${sel('fmt', [32, 48], c.fmt, x => x + ' seleções')}` : ''}</div>`;
+}
+function setPack(id, on) { const ids = S.packs.map(k => k.id).filter(x => (x === id ? on : S.cfg.packs.includes(x))); if (!ids.length) { alert('Escolha pelo menos um pacote de craques.'); return render(); } cfg('packs', ids); }
+function shareLink() { return location.origin + '/leilao?sala=' + S.code; }
+function copyLink() { const t = shareLink(); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => alert('Link copiado!'), () => prompt('Copie o link:', t)); }
+function whats() { window.open('https://wa.me/?text=' + encodeURIComponent('Vem jogar o Leilão de Futebol comigo! ' + shareLink()), '_blank'); }
+function warnHtml() {
+  return (S.warn || []).map(w => `<div style="padding:.5rem .7rem;border-radius:6px;margin-bottom:.8rem;background:${w.crit ? '#5c1f24' : '#4a3a0c'};border:1px solid ${w.crit ? 'var(--bad)' : 'var(--ac)'}">
+    ⚠️ ${w.crit ? 'Faltam' : 'Estão acabando os'} ${{ GK: 'goleiros', DEF: 'defensores', MID: 'meias', ATT: 'atacantes' }[w.pos]}: restam <b>${w.left}</b> para <b>${w.need}</b> vagas${S.round > 1 ? ' (rodada ' + S.round + ')' : ''}.</div>`).join('');
 }
 function render() {
   if (!S) return;
@@ -159,14 +170,14 @@ function render() {
   $('vz').textContent = 'Narrador: ' + (voice ? 'ligado' : 'desligado'); $('sz').textContent = 'Som: ' + (sfx ? 'ligado' : 'desligado');
   const me = S.players.find(p => p.id === S.you), isHost = S.you === S.host; let h = '';
   if (S.phase === 'lobby') {
-    h = `<h2 style="font-size:2.2rem">Sala de espera</h2><p>Link para convidar: <b>${esc(location.origin + '/leilao?sala=' + S.code)}</b></p>
+    h = `<h2 style="font-size:2.2rem">Sala de espera</h2><p>Link para convidar: <b>${esc(shareLink())}</b></p><div class="row" style="margin:0 0 .6rem"><button onclick="copyLink()">📋 Copiar link</button><button onclick="whats()">💬 Enviar no WhatsApp</button></div>
       <p class="mu">${isHost ? 'Você é o anfitrião: ajuste as regras abaixo.' : 'Regras definidas pelo anfitrião:'}</p>${cfgHtml(isHost)}
       ${isHost ? `<button class="pri" onclick="send({t:'start'})">Iniciar leilão</button>` : '<p>Aguardando o anfitrião iniciar…</p>'}`;
   } else if (S.phase === 'end') h = endHtml(isHost);
-  else if (!S.lot) h = `<h2 style="font-size:2.2rem">Preparando o próximo jogador…</h2>`;
+  else if (!S.lot) h = warnHtml() + `<h2 style="font-size:2.2rem">Preparando o próximo jogador…</h2>`;
   else {
     const l = S.lot, can = me.need[l.pos] > 0 && l.bidder !== me.id;
-    h = `<div class="lot"><span class="pos">${PN[l.pos]}</span><h1>${esc(l.n)}</h1><div class="mu">Nota ${l.r}</div>
+    h = warnHtml() + `<div class="lot"><span class="pos">${PN[l.pos]}</span><h1>${esc(l.n)}</h1><div class="mu">Nota ${l.r}</div>
       <div class="big">€ ${l.bidder ? l.bid : l.base}M</div>
       <div>${l.bidder ? `Maior lance: <b>${esc(nm(l.bidder))}</b>` : 'Ninguém deu lance ainda'}</div>
       <div class="track"><div id="bar"></div></div><div id="tm" class="mu"></div>
@@ -186,9 +197,9 @@ function render() {
   $('log').innerHTML = S.log.map(t => `<div>${esc(t)}</div>`).join('');
 }
 function bar(l, me, can) { // campo de lance: não é recriado, para não perder o que a pessoa digitou
-  const min = l.bidder ? l.bid + 1 : l.base, a = $('amt');
-  $('bidbar').hidden = !can; a.min = min; a.max = me.max; a.placeholder = 'mín ' + min;
-  $('hint').textContent = `Lance mínimo € ${min}M · você pode dar até € ${me.max}M`;
+  const min = l.bidder ? l.bid + 1 : l.base, tmin = l.bidder ? l.bid + 1 : l.floor, a = $('amt');
+  $('bidbar').hidden = !can; a.min = tmin; a.max = me.max; a.placeholder = 'mín ' + tmin;
+  $('hint').textContent = l.bidder ? `Lance mínimo € ${min}M · você pode dar até € ${me.max}M` : `Primeiro lance: de € ${tmin}M (metade do preço) até € ${me.max}M · preço cheio € ${min}M`;
   $('quick').innerHTML = [0, 4, 9].map(d => min + d).map(v => `<button ${v <= me.max ? '' : 'disabled'} onclick="send({t:'bid',amount:${v}})">€ ${v}M</button>`).join('');
 }
 function bidFree() { const v = Math.floor(+$('amt').value); if (!(v > 0)) return; send({ t: 'bid', amount: v }); $('amt').value = ''; }
@@ -203,16 +214,28 @@ function endHtml(isHost) {
     <details><summary class="mu">Todas as vendas (${S.sales.length})</summary><table>${S.sales.map(d => `<tr><td>${esc(d.n)}</td><td>${esc(d.buyer)}</td><td>€ ${d.price}M</td></tr>`).join('')}</table></details>`;
   if (S.copaRes) h += `<h2 style="font-size:1.5rem;margin-top:1rem">Copa do Mundo simulada</h2><table>${S.copaRes.map((c, i) => `<tr><td><b>${i + 1}º ${esc(c.name)}</b><br><span class="${c.champ ? 'ok' : 'mu'}">${c.champ ? '🏆 Campeão do mundo' : 'Eliminado: ' + esc(c.out)}</span></td>
     <td>${c.wins}V · ${c.gf}x${c.ga} gols<details><summary class="mu">jogos</summary>${c.matches.map(m => `<div class="${m.won ? 'ok' : m.draw ? '' : 'bad'}">${esc(m.stage)}: ${esc(m.opp)} ${m.gf}–${m.ga}${m.pen ? ' (pên)' : ''}</div>`).join('')}</details></td></tr>`).join('')}</table>`;
-  else if (isHost && S.copaOk) h += `<p><button onclick="send({t:'copa'})">🏆 Simular a Copa com esses times</button></p>`;
+  if (S.torneio) h += torneioHtml();
+  const hasTeams = S.players.filter(p => p.squad.length).length > 1;
+  if (isHost && ((S.copaOk && !S.copaRes) || (hasTeams && !S.torneio))) h += `<p class="row">${S.copaOk && !S.copaRes ? `<button onclick="send({t:'copa'})">🏆 Simular a Copa do Mundo</button>` : ''}${hasTeams && !S.torneio ? `<button onclick="send({t:'torneio'})">⚔️ Torneio entre os times do leilão</button>` : ''}</p>`;
   return h + (isHost ? `<p><button class="pri" onclick="send({t:'again'})">Jogar de novo</button></p>` : '');
+}
+function torneioHtml() {
+  const t = S.torneio, f = t.final, g = m => `<div>${esc(m.a)} <b>${m.ga}–${m.gb}</b> ${esc(m.b)}</div>`;
+  return `<h2 style="font-size:1.5rem;margin-top:1rem">Torneio entre os times do leilão</h2>
+    <p class="ok" style="margin:.3rem 0">🏆 Campeão: <b>${esc(t.champion)}</b></p>
+    ${t.matches.length ? `<table><tr class="mu"><th>Time</th><th>Pts</th><th>V-E-D</th><th>Gols</th></tr>${t.table.map((r, i) => `<tr><td>${i + 1}º ${esc(r.name)}</td><td>${r.pts}</td><td>${r.w}-${r.d}-${r.l}</td><td>${r.gf}x${r.ga}</td></tr>`).join('')}</table>` : ''}
+    <div style="margin-top:.5rem"><b>${t.matches.length ? 'Final (1º x 2º)' : 'Final'}:</b> ${esc(f.a)} <b>${f.ga}–${f.gb}</b> ${esc(f.b)}${f.pen ? ' (nos pênaltis: ' + esc(f.winner) + ')' : ''}</div>
+    ${t.matches.length ? `<details><summary class="mu">todos os jogos</summary>${t.matches.map(g).join('')}</details>` : ''}`;
 }
 function pitch() {
   const id = S.players.some(p => p.id === viewId) ? viewId : S.you, p = S.players.find(x => x.id === id);
   const rows = ['ATT', 'MID', 'DEF', 'GK'].map(pos => { const got = p.squad.filter(x => x.pos === pos);
     return '<div class="fr">' + Array.from({ length: S.slots[pos] }, (_, i) => { const x = got[i];
       return x ? `<div class="sl" title="${esc(x.n)} · € ${x.price}M"><div class="dot f">${x.r}</div><small>${esc(x.n)}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>'; }).join('') + '</div>'; }).join('');
-  $('pitch').innerHTML = `<div class="tabs">${S.players.map(q => `<button class="${q.id === id ? 'pri' : ''}" onclick="viewId='${q.id}';render()">${esc(q.name)}</button>`).join('')}</div><div class="field">${rows}</div>
-    <div class="mu" style="margin-top:.5rem">${S.cfg.form} · Nota do time: <b>${score(p)}</b> · Gasto: € ${p.squad.reduce((s, x) => s + x.price, 0)}M</div>`;
+  const spent = p.squad.reduce((s, x) => s + x.price, 0), st = (l, v, c = '') => `<div style="flex:1;min-width:5.5rem;background:#0b2036;border-radius:6px;padding:.3rem .5rem"><div class="mu" style="font-size:.75rem">${l}</div><b class="${c}" style="font-size:1.15rem">${v}</b></div>`;
+  $('pitch').innerHTML = `<div class="tabs">${S.players.map(q => `<button class="${q.id === id ? 'pri' : ''}" onclick="viewId='${q.id}';render()">${esc(q.name)}</button>`).join('')}</div>
+    <div class="row" style="margin:0 0 .6rem;flex-wrap:nowrap">${st('Disponível', '€ ' + p.budget + 'M', 'ok')}${st('Gasto', '€ ' + spent + 'M')}${st('Nota do time', score(p))}${st('Formação', S.cfg.form)}</div>
+    <div class="field">${rows}</div>`;
 }
 setInterval(() => {
   if (S && S.lot && $('bar')) {
