@@ -134,7 +134,7 @@ const cfg = (k, v) => send({ t: 'cfg', k, v });
 const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')); } catch { return null; } }, set(v) { try { v ? localStorage.setItem('leilao_s', JSON.stringify(v)) : localStorage.removeItem('leilao_s'); } catch {} } };
 
 $('room').value = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
-let token = '';
+let token = '', lastMsg = Date.now(), retry = null; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
 const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; connect(); }
 
 function join(create) {
@@ -145,7 +145,6 @@ function join(create) {
 }
 function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
 function leave() { store.set(null); location.href = '/leilao'; }
-let lastMsg = Date.now(), retry = null;
 function connect() {
   if (ws && ws.readyState <= 1) return;
   clearTimeout(retry);
