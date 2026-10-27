@@ -20,6 +20,8 @@ const PL = { GK: 'goleiros', DEF: 'defensores', MID: 'meias', ATT: 'atacantes' }
 const MAX_PLAYERS = 8, RESET_MS = 6000 / T;
 const FILE = path.join(process.env.DATA_DIR || __dirname, 'salas.json');
 
+process.on('uncaughtException', e => console.error('Erro não tratado:', e));
+process.on('unhandledRejection', e => console.error('Promessa rejeitada:', e));
 const mi = n => n === 1 ? '1 milhão' : n + ' milhões';
 const rooms = {};
 const DEFAULT_CFG = { budget: 200, size: 9, form: '3-3-2', bidSec: 12, packs: ['atuais', 'lendas'], copa: false, torneio: false, fmt: 48 };
@@ -81,6 +83,7 @@ function restore() {
     if (Date.now() - (o.touched || 0) > 24 * 3600e3) continue;
     const r = rooms[o.code] = { ...o, players: o.players.map(p => ({ ...p, ws: null })), timer: null, timers: [] };
     r.cfg = { ...DEFAULT_CFG, ...r.cfg }; r.unsold = r.unsold || []; r.round = r.round || 1; r.warned = r.warned || {};
+    r.gapAt = Date.now();
     if (r.phase === 'auction') { if (r.lot) { r.lot.end = Date.now() + bidMs(r); arm(r); } else setTimeout(() => nextLot(r), 5000); }
   }
   console.log('Salas restauradas:', Object.keys(rooms).length);
@@ -105,7 +108,7 @@ function nextLot(r) {
   }
   if (!x) {
     if (r.players.some(p => p.squad.length < r.cfg.size) && r.unsold.length && r.round < 3) { // acabaram os craques: os não vendidos voltam
-      r.round++; r.queue = shuffle(r.unsold.splice(0)); r.warned = {};
+      r.round++; r.queue = shuffle(r.unsold.splice(0)); r.warned = {}; r.gapAt = Date.now();
       say(r, `Rodada ${r.round}! Os craques que ficaram sem comprador voltam ao leilão com preço reduzido!`, 'gavel');
       return void setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3500 / T);
     }
@@ -115,6 +118,7 @@ function nextLot(r) {
     if (r.cfg.torneio) runTorneio(r);
     return say(r, `Fim do leilão! O melhor time é de ${w ? w.name : '—'}!`, 'sold');
   }
+  r.gapAt = null;
   r.lot = { n: x[0], pos: x[1], r: x[2], club: x[3], role: x[4], bid: 0, bidder: null, hist: [], skips: [], round: r.round, end: Date.now() + bidMs(r) };
   say(r, `Próximo jogador: ${x[0]}, ${x[4] ? ROLE[x[4]] + ', ' + x[3] : NAME[x[1]]}, nota ${x[2]}. Lance inicial: ${mi(baseOf(r, x[2], r.lot))}!`, 'gavel');
   for (const w of stockWarn(r)) if (!r.warned[w.pos]) { r.warned[w.pos] = 1; say(r, w.crit ? `Atenção! Faltam ${PL[w.pos]}: só restam ${w.left} para ${w.need} vagas.` : `Atenção! Estão acabando os ${PL[w.pos]}: restam ${w.left} para ${w.need} vagas.`); }
@@ -122,7 +126,7 @@ function nextLot(r) {
 }
 function close(r) {
   clearTimeout(r.timer); (r.timers || []).forEach(clearTimeout);
-  const l = r.lot; if (!l) return; r.lot = null;
+  const l = r.lot; if (!l) return; r.lot = null; r.gapAt = Date.now();
   const p = l.bidder && r.players.find(x => x.id === l.bidder);
   if (p) {
     p.budget -= l.bid; p.squad.push({ n: l.n, pos: l.pos, r: l.r, price: l.bid, club: l.club, role: l.role });
@@ -168,12 +172,13 @@ const wss = new WebSocketServer({ server });
 wss.on('connection', ws => {
   let r, p;
   const err = text => send(ws, { t: 'err', text });
-  ws.on('message', d => {
+  const handle = d => {
     let m; try { m = JSON.parse(d); } catch { return; }
     if (m.t === 'join') {
       const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().slice(0, 16);
       if (!code || !name) return err('Informe seu nome e o código da sala.');
       if (clean(name) !== name) return err('Nome não permitido.');
+      if (!rooms[code] && m.re) return err('Essa sala não existe mais (o servidor reiniciou). Crie uma nova sala.');
       r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, torneio: null, unsold: [], round: 1, warned: {}, banned: [], cfg: { ...DEFAULT_CFG } });
       if (r.banned.includes(name)) { r = null; return err('Você foi removido desta sala.'); }
       p = r.players.find(x => x.name === name); // mesmo nome = reconexão
@@ -202,7 +207,7 @@ wss.on('connection', ws => {
         const have = pool.filter(x => x[1] === pos).length, want = r.players.length * sl[pos];
         if (have < want) return err(`Não há craques suficientes: faltam ${PL[pos]} (${have} disponíveis para ${want} vagas). Marque mais pacotes de craques, use menos jogadores ou outra formação.`);
       }
-      r.phase = 'auction'; r.log = []; r.sales = []; r.copaRes = null; r.torneio = null; r.unsold = []; r.round = 1; r.warned = {};
+      r.phase = 'auction'; r.gapAt = Date.now(); r.log = []; r.sales = []; r.copaRes = null; r.torneio = null; r.unsold = []; r.round = 1; r.warned = {};
       r.queue = shuffle(pool.map(x => [x[0], x[1], x[2], x[4], x[5]]));
       say(r, 'O leilão vai começar! Boa sorte, cartolas!', 'gavel');
       setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3000 / T);
@@ -223,11 +228,15 @@ wss.on('connection', ws => {
       if (r.players.filter(x => x.ws && need(r, x, l.pos) > 0).every(x => l.skips.includes(x.id))) close(r); else bc(r);
     } else if (m.t === 'bid') {
       const l = r.lot, a = Math.floor(+m.amount);
-      if (!l || !(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < (l.bidder ? l.bid + 1 : floorOf(r, l.r, l))) return err(`Lance inválido: mínimo € ${l.bidder ? l.bid + 1 : floorOf(r, l.r, l)}M, máximo € ${maxBid(r, p)}M.`);
+      if (!l) return err('O jogador acabou de ser vendido. Aguarde o próximo!');
+      const minBid = l.bidder ? l.bid + 1 : floorOf(r, l.r, l);
+      if (!(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < minBid) return err(`Lance inválido: mínimo € ${minBid}M, máximo € ${maxBid(r, p)}M.`);
       l.bid = a; l.bidder = p.id; l.hist.push({ bidder: p.id, bid: a }); l.end = Math.max(l.end, Date.now() + RESET_MS); arm(r);
       say(r, `${p.name} dá ${mi(a)} por ${l.n}!`, 'bid');
     }
-  });
+  };
+  ws.on('message', d => { try { handle(d); } catch (e) { console.error('Erro ao tratar mensagem:', e); } });
+  ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => {
     if (!p || !r || p.ws !== ws) return;
     p.ws = null; const room = r, who = p; bc(room);
@@ -240,5 +249,20 @@ wss.on('connection', ws => {
   });
 });
 
+// Batimento: derruba conexões mortas (ex.: celular que perdeu sinal) e mantém as ativas
+setInterval(() => wss.clients.forEach(ws => {
+  if (ws.isAlive === false) return ws.terminate();
+  ws.isAlive = false; try { ws.ping(); ws.send(JSON.stringify({ t: 'hb' })); } catch (e) {}
+}), 25000 / T);
+// Vigia: se algum lote ficar preso ou o intervalo entre lotes não terminar, o servidor se corrige sozinho
+setInterval(() => {
+  for (const r of Object.values(rooms)) {
+    try {
+      if (r.phase !== 'auction') continue;
+      if (r.lot && Date.now() - r.lot.end > 4000) { console.warn('Vigia: lote preso na sala', r.code); close(r); }
+      else if (!r.lot && r.gapAt && Date.now() - r.gapAt > 9000) { console.warn('Vigia: sala presa entre lotes', r.code); r.gapAt = Date.now(); nextLot(r); }
+    } catch (e) { console.error('Erro no vigia:', e); }
+  }
+}, 2000 / T);
 restore();
 server.listen(process.env.PORT || 3000, () => console.log('Leilão de Futebol no ar!'));

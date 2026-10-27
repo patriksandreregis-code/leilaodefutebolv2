@@ -68,6 +68,7 @@ details{margin:.3rem 0}summary{cursor:pointer}
 </style>
 </head>
 <body>
+<div id="net" hidden style="position:fixed;top:0;left:0;right:0;z-index:50;background:#5c1f24;color:#fff;text-align:center;padding:.45rem;font-weight:600">Sem conexão. Reconectando… sua partida continua.</div>
 <header class="site-header">
 <a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<span>DO FUT.</span></span></a>
 <nav class="site-nav" aria-label="Navegação principal"><a href="/">Início</a><a href="/leilao">Leilão</a><a href="/dado">Dado da Copa</a><a class="home-cta" href="/">Menu de jogos ↗</a></nav>
@@ -133,18 +134,32 @@ function join(create) {
   connect();
 }
 function leave() { store.set(null); location.href = '/leilao'; }
+let lastMsg = Date.now(), retry = null;
 function connect() {
-  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  ws.onopen = () => send({ t: 'join', room, name });
-  ws.onmessage = e => {
+  if (ws && ws.readyState <= 1) return;
+  clearTimeout(retry);
+  const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  w.onopen = () => { lastMsg = Date.now(); send({ t: 'join', room, name, re: !!(S || saved) }); };
+  w.onmessage = e => {
+    lastMsg = Date.now();
     const m = JSON.parse(e.data);
     if (m.t === 'state') { if (!S) store.set({ name, room }); S = m; S.at = Date.now(); render(); }
     else if (m.t === 'say') { speak(m.text); fx(m.fx); }
     else if (m.t === 'kicked') { store.set(null); alert('Você foi removido da sala.'); location.href = '/leilao'; }
-    else if (m.t === 'err') { alert(m.text); if (!S) { store.set(null); $('join').hidden = false; $('game').hidden = true; } }
+    else if (m.t === 'err') {
+      if (/não existe mais/.test(m.text)) { store.set(null); alert(m.text); location.href = '/leilao'; return; }
+      if (/acabou de ser vendido/.test(m.text)) return; // lance que chegou tarde: sem alerta
+      alert(m.text); if (!S) { store.set(null); $('join').hidden = false; $('game').hidden = true; }
+    }
   };
-  ws.onclose = () => { if (S) setTimeout(connect, 2000); }; // reconecta sozinho
+  w.onclose = () => { if (w === ws && (S || saved)) retry = setTimeout(connect, 2000); }; // reconecta sozinho
 }
+function reconnect() { const w = ws; if (w) { w.onclose = null; try { w.close(); } catch (e) {} } ws = null; clearTimeout(retry); connect(); }
+setInterval(() => { // vigia da conexão: avisa quando cair e reconecta se o servidor ficar mudo
+  const off = !!S && !(ws && ws.readyState === 1); $('net').hidden = !off;
+  if (S && Date.now() - lastMsg > 50000) reconnect(); else if (S && (!ws || ws.readyState > 1)) connect();
+}, 2000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S && Date.now() - lastMsg > 30000) reconnect(); });
 
 // ===== Voz do narrador e efeitos sonoros =====
 function speak(t) {
