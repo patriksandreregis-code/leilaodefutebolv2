@@ -40,7 +40,10 @@ button.pri{background:var(--ac);color:#241a00;border-color:var(--ac)}button:disa
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 a{color:var(--mu)}.mu{color:var(--mu)}.ok{color:var(--ok)}.bad{color:var(--bad)}
 .wrap{width:min(1120px,calc(100% - 40px));margin:0 auto;padding:1.25rem 0}
-#join{max-width:420px;margin:7vh auto;display:grid;gap:.7rem}#join h1{font-size:3rem;line-height:1}
+[hidden]{display:none!important}
+#join,#joining{max-width:420px;margin:7vh auto}#join{display:grid;gap:.7rem}
+#joining{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:.7rem 1rem;margin:1rem auto;color:var(--mu)}
+.spin{width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--ac);border-radius:50%;animation:giro .8s linear infinite}@keyframes giro{to{transform:rotate(360deg)}}#join h1{font-size:3rem;line-height:1}
 .top{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
 .grid{display:grid;grid-template-columns:3fr 2fr;gap:1rem}@media(max-width:780px){.grid{grid-template-columns:1fr}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
@@ -91,6 +94,8 @@ details{margin:.3rem 0}summary{cursor:pointer}
   <button onclick="join(true)">Criar nova sala</button>
 </div>
 
+<div id="joining" class="panel" hidden role="status"><span class="spin" aria-hidden="true"></span><span id="joinmsg">Entrando na sala…</span></div>
+
 <div id="game" class="wrap" hidden>
   <div class="top">
     <div><a href="/">← Voltar ao menu</a> · Sala <b id="code" style="font-size:1.3rem"></b></div>
@@ -134,13 +139,17 @@ const cfg = (k, v) => send({ t: 'cfg', k, v });
 const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')); } catch { return null; } }, set(v) { try { v ? localStorage.setItem('leilao_s', JSON.stringify(v)) : localStorage.removeItem('leilao_s'); } catch {} } };
 
 $('room').value = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
-let token = '', lastMsg = Date.now(), retry = null; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
-const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; connect(); }
+let token = '', lastMsg = Date.now(), retry = null, jt = null; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
+const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; showJoining('Reconectando à sua sala…'); connect(); }
 
+function showJoining(msg) { $('join').hidden = true; $('joining').hidden = false; $('joinmsg').textContent = msg; clearTimeout(jt);
+  jt = setTimeout(() => { if (!S) $('joinmsg').textContent = 'Acordando o servidor… no plano grátis pode levar até 1 minuto.'; }, 6000); }
+function showJoinForm() { clearTimeout(jt); $('joining').hidden = true; $('join').hidden = false; $('game').hidden = true; }
 function join(create) {
   name = $('name').value.trim(); room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
   token = (saved && saved.room === room && saved.name === name) ? (saved.token || '') : '';
   if (!name || !room) return alert('Informe seu nome e o código da sala.');
+  showJoining('Entrando na sala…');
   connect();
 }
 function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
@@ -159,10 +168,13 @@ function connect() {
     else if (m.t === 'err') {
       if (/não existe mais/.test(m.text)) { store.set(null); alert(m.text); location.href = '/leilao'; return; }
       if (/acabou de ser vendido/.test(m.text)) return; // lance que chegou tarde: sem alerta
-      alert(m.text); if (!S) { store.set(null); $('join').hidden = false; $('game').hidden = true; }
+      alert(m.text); if (!S) { store.set(null); showJoinForm(); }
     }
   };
-  w.onclose = () => { if (w === ws && (S || saved)) retry = setTimeout(connect, 2000); }; // reconecta sozinho
+  w.onclose = () => { // reconecta sozinho; se nunca conectou, volta ao formulário com aviso
+    if (w !== ws) return;
+    if (S || saved) retry = setTimeout(connect, 2000); else if (!jt || !S) { ws = null; showJoinForm(); alert('Não foi possível conectar ao servidor. Tente novamente em instantes.'); }
+  };
 }
 function reconnect() { const w = ws; if (w) { w.onclose = null; try { w.close(); } catch (e) {} } ws = null; clearTimeout(retry); connect(); }
 setInterval(() => { // vigia da conexão: avisa quando cair e reconecta se o servidor ficar mudo
@@ -220,7 +232,7 @@ function warnHtml() {
 }
 function render() {
   if (!S) return;
-  $('join').hidden = true; $('game').hidden = false; $('code').textContent = S.code;
+  $('join').hidden = true; $('joining').hidden = true; clearTimeout(jt); $('game').hidden = false; $('code').textContent = S.code;
   $('vz').textContent = 'Narrador: ' + (voice ? 'ligado' : 'desligado'); $('sz').textContent = 'Som: ' + (sfx ? 'ligado' : 'desligado');
   const me = S.players.find(p => p.id === S.you), isHost = S.you === S.host; let h = '';
   if (S.phase === 'lobby') {
