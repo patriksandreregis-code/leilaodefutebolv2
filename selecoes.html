@@ -1,16 +1,15 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Seleções · Dado da Copa</title>
-<style>:root{--bg:#0e2a47;--card:#143a5e;--line:#2a5782;--tx:#f2f6fa;--mu:#9bb6d1;--ac:#ffb703}
-body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,sans-serif}.w{max-width:820px;margin:0 auto;padding:1rem}
-a{color:var(--mu)}.mu{color:var(--mu)}details{background:var(--card);border:1px solid var(--line);border-radius:8px;margin:.5rem 0;padding:.6rem .9rem}
-summary{cursor:pointer;font-weight:700;font-size:1.1rem}summary span{color:var(--mu);font-weight:400;font-size:.9rem}
-h3{margin:.8rem 0 .2rem;color:var(--ac)}.chip{display:inline-block;background:#0b2036;border-radius:4px;padding:0 .45rem;margin:.15rem .2rem 0 0;font-size:.85rem}.chip b{color:var(--ac)}</style></head>
-<body><div class="w"><a href="/dado">← Dado da Copa</a><h1 id="t"></h1><p class="mu">Seleções e Copas disponíveis. As notas são aproximadas e a base cresce aos poucos.</p><div id="l"></div></div>
-<script src="/dados.js"></script><script>
-const g={};SQUADS.forEach(s=>(g[s.t]=g[s.t]||[]).push(s));
-const names=Object.keys(g).sort((a,b)=>a.localeCompare(b,'pt'));
-document.getElementById('t').textContent=names.length+' seleções · '+SQUADS.length+' elencos';
-const E=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-document.getElementById('l').innerHTML=names.map(n=>`<details><summary>${E(n)} <span>${g[n].map(s=>s.y).sort().join(' · ')}</span></summary>`+
- g[n].sort((a,b)=>a.y-b.y).map(s=>`<h3>Copa ${s.y}</h3>`+s.p.map(x=>`<span class="chip">${E(x[0])} <b>${x[2]}</b> <span class="mu">${x[1]}</span></span>`).join('')).join('')+'</details>').join('');
-</script></body></html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Elencos de seleções e Copas do Mundo com notas dos jogadores — Resenha do Fut</title><meta name="theme-color" content="#080d0b"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"><link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="manifest" href="/site.webmanifest"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>:root{color-scheme:dark;--bg:#080d0b;--card:#101713;--line:#29372d;--tx:#f4f6f4;--mu:#a6b0a8;--ac:#a8ff3f}
+body{margin:0;background:radial-gradient(ellipse at 82% -5%,rgba(168,255,63,.12),transparent 34%),var(--bg);color:var(--tx);font:16px/1.55 Inter,system-ui,sans-serif}
+.w{max-width:820px;margin:0 auto;padding:1rem}a{color:var(--mu);text-decoration:none}a:hover{color:var(--ac)}a:focus-visible,summary:focus-visible{outline:2px solid var(--ac);outline-offset:3px}.mu{color:var(--mu)}
+h1{font-family:'Barlow Condensed',Impact,sans-serif;font-weight:800;font-style:italic;font-size:2.6rem;margin:.6rem 0 .2rem}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:.5rem 0;padding:.6rem .9rem}
+summary{cursor:pointer;font-weight:700;font-size:1.05rem}summary span{color:var(--mu);font-weight:400;font-size:.9rem}
+h3{margin:.8rem 0 .2rem;color:var(--ac);font-family:'Barlow Condensed',Impact,sans-serif;font-style:italic;font-size:1.3rem}
+.chip{display:inline-block;background:#0b100d;border:1px solid var(--line);border-radius:6px;padding:0 .45rem;margin:.15rem .2rem 0 0;font-size:.85rem}.chip b{color:var(--ac)}</style><meta name="description" content="Veja os elencos de seleções em Copas do Mundo, de 1966 a 2026, com as notas de cada jogador usadas no Dado da Copa.">
+<link rel="canonical" href="{{SITE}}/selecoes">
+<meta property="og:type" content="website"><meta property="og:title" content="Elencos de seleções e Copas do Mundo com notas dos jogadores — Resenha do Fut"><meta property="og:description" content="Veja os elencos de seleções em Copas do Mundo, de 1966 a 2026, com as notas de cada jogador usadas no Dado da Copa."><meta property="og:url" content="{{SITE}}/selecoes"><meta property="og:image" content="{{SITE}}/og-image.png"><meta name="twitter:card" content="summary_large_image">
+</head>
+<body><div class="w"><a href="/dado">← Dado da Copa</a> · <a href="/">Início</a><h1>{{N_TEAMS}} seleções · {{N_SQUADS}} elencos</h1><p class="mu">Seleções e Copas disponíveis. As notas são aproximadas e a base cresce aos poucos.</p><div id="l"><!--SQUADS--></div></div>
+</body></html>

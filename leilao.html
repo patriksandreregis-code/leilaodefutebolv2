@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Leilão de Futebol — Resenha do Fut</title>
+<title>Leilão de Futebol online com amigos — Resenha do Fut</title>
 <meta name="theme-color" content="#080d0b">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="icon" href="/favicon.ico">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="description" content="Leilão de Futebol do Resenha do Fut: dispute craques e monte seu elenco com os amigos.">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -66,6 +66,14 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left
 .sl small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;text-shadow:0 1px 2px #000}
 details{margin:.3rem 0}summary{cursor:pointer}
 </style>
+<meta name="description" content="Crie uma sala, convide os amigos pelo WhatsApp e dispute craques atuais, lendas e jogadores do Brasileirão em um leilão ao vivo. Monte o melhor time sem estourar o orçamento.">
+<link rel="canonical" href="{{SITE}}/leilao">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Resenha do Fut"><meta property="og:locale" content="pt_BR">
+<meta property="og:title" content="Leilão de Futebol online com amigos — Resenha do Fut"><meta property="og:description" content="Crie uma sala, convide os amigos pelo WhatsApp e dispute craques atuais, lendas e jogadores do Brasileirão em um leilão ao vivo. Monte o melhor time sem estourar o orçamento."><meta property="og:url" content="{{SITE}}/leilao">
+<meta property="og:image" content="{{SITE}}/og-image.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Resenha do Fut: futebol é melhor na resenha">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Leilão de Futebol online com amigos — Resenha do Fut"><meta name="twitter:description" content="Crie uma sala, convide os amigos pelo WhatsApp e dispute craques atuais, lendas e jogadores do Brasileirão em um leilão ao vivo. Monte o melhor time sem estourar o orçamento."><meta name="twitter:image" content="{{SITE}}/og-image.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>if(location.search.indexOf("sala=")>-1){var m=document.createElement("meta");m.name="robots";m.content="noindex";document.head.appendChild(m)}</script>
 </head>
 <body>
 <div id="net" hidden style="position:fixed;top:0;left:0;right:0;z-index:50;background:#5c1f24;color:#fff;text-align:center;padding:.45rem;font-weight:600">Sem conexão. Reconectando… sua partida continua.</div>
@@ -118,7 +126,7 @@ const ROLE = { GOL: 'Goleiro', ZAG: 'Zagueiro', LD: 'Lateral-direito', LE: 'Late
 const tag = x => x.club ? ` <span class="mu">(${esc(x.role)} · ${esc(x.club)})</span>` : '';
 const PK = { todos: 'Todos (atuais + lendas)', atuais: 'Só craques atuais', lendas: 'Só lendas' };
 let ws, S = null, name = '', room = '', voice = true, sfx = true, viewId = null, ac = null;
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const send = m => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 const nm = id => (S.players.find(p => p.id === id) || {}).name || '';
 const score = p => p.squad.reduce((s, x) => s + x.r, 0);
@@ -126,24 +134,27 @@ const cfg = (k, v) => send({ t: 'cfg', k, v });
 const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')); } catch { return null; } }, set(v) { try { v ? localStorage.setItem('leilao_s', JSON.stringify(v)) : localStorage.removeItem('leilao_s'); } catch {} } };
 
 $('room').value = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
-const saved = store.get(); if (saved) { name = saved.name; room = saved.room; $('name').value = name; $('room').value = room; connect(); }
+let token = '';
+const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; connect(); }
 
 function join(create) {
-  name = $('name').value.trim(); room = (create ? Math.random().toString(36).slice(2, 6) : $('room').value).trim().toUpperCase();
+  name = $('name').value.trim(); room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
+  token = (saved && saved.room === room && saved.name === name) ? (saved.token || '') : '';
   if (!name || !room) return alert('Informe seu nome e o código da sala.');
   connect();
 }
+function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
 function leave() { store.set(null); location.href = '/leilao'; }
 let lastMsg = Date.now(), retry = null;
 function connect() {
   if (ws && ws.readyState <= 1) return;
   clearTimeout(retry);
   const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  w.onopen = () => { lastMsg = Date.now(); send({ t: 'join', room, name, re: !!(S || saved) }); };
+  w.onopen = () => { lastMsg = Date.now(); send({ t: 'join', room, name, token, re: !!(S || saved) }); };
   w.onmessage = e => {
     lastMsg = Date.now();
     const m = JSON.parse(e.data);
-    if (m.t === 'state') { if (!S) store.set({ name, room }); S = m; S.at = Date.now(); render(); }
+    if (m.t === 'state') { if (m.token && m.token !== token) { token = m.token; store.set({ name, room, token }); } S = m; S.at = Date.now(); render(); }
     else if (m.t === 'say') { speak(m.text); fx(m.fx); }
     else if (m.t === 'kicked') { store.set(null); alert('Você foi removido da sala.'); location.href = '/leilao'; }
     else if (m.t === 'err') {
@@ -232,7 +243,7 @@ function render() {
   if (!S.lot || S.phase !== 'auction') $('bidbar').hidden = true;
   $('main').innerHTML = h;
   $('players').innerHTML = S.players.map(p => `<div class="pl ${p.id === S.you ? 'me' : ''}"><b>${esc(p.name)}</b>${p.id === S.host ? ' 👑' : ''}${p.on ? '' : ' <span class="bad">(offline)</span>'}
-    <span class="mu" style="float:right">€ ${p.budget}M · ${p.squad.length}/${S.total}${isHost && p.id !== S.you ? `<button class="x" title="Tornar anfitrião" onclick="send({t:'host',id:'${p.id}'})">👑</button><button class="x" title="Remover da sala" onclick="if(confirm('Remover ${esc(p.name)} da sala?'))send({t:'kick',id:'${p.id}'})">✕</button>` : ''}</span><br>
+    <span class="mu" style="float:right">€ ${p.budget}M · ${p.squad.length}/${S.total}${isHost && p.id !== S.you ? `<button class="x" title="Tornar anfitrião" onclick="send({t:'host',id:'${p.id}'})">👑</button><button class="x" title="Remover da sala" data-id="${p.id}" data-name="${esc(p.name)}" onclick="kickBtn(this)">✕</button>` : ''}</span><br>
     ${p.squad.map(x => `<span class="chip">${esc(x.n)} · ${x.price}M${tag(x)}</span>`).join('') || '<span class="mu">Sem jogadores</span>'}</div>`).join('') +
     (isHost && S.players.some(p => !p.on) ? `<button style="margin-top:.6rem" onclick="send({t:'kickOffline'})">Remover jogadores offline</button>` : '');
   pitch();

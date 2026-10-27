@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const http = require('http'), fs = require('fs'), path = require('path');
 const { WebSocketServer } = require('ws');
 const POOL = require('./craques.js'), copa = require('./copa.js');
@@ -24,6 +25,12 @@ process.on('uncaughtException', e => console.error('Erro não tratado:', e));
 process.on('unhandledRejection', e => console.error('Promessa rejeitada:', e));
 const mi = n => n === 1 ? '1 milhão' : n + ' milhões';
 const rooms = {};
+const SITE_URL = (process.env.SITE_URL || '').replace(/\/$/, ''); // ex.: https://resenhadofut.com.br (opcional; sem isso usa o endereço acessado)
+const MAX_ROOMS = +process.env.MAX_ROOMS || 300, MAX_CONN_IP = +process.env.MAX_CONN_IP || 40, MAX_NEW_ROOMS_IP_HOUR = +process.env.MAX_NEW_ROOMS_IP_HOUR || 15; // limites por IP (celulares na mesma operadora podem dividir o IP)
+const ipConns = {}, ipRooms = {};
+const NAME_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._-]{1,15}$/u;
+const newToken = () => crypto.randomBytes(12).toString('base64url');
+const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const DEFAULT_CFG = { budget: 200, size: 9, form: '3-3-2', bidSec: 12, packs: ['atuais', 'lendas'], copa: false, torneio: false, fmt: 48 };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -63,7 +70,7 @@ function view(r) {
   }
   return v;
 }
-const bc = r => { r.touched = Date.now(); r.players.forEach(p => send(p.ws, { t: 'state', you: p.id, ...view(r) })); save(); };
+const bc = r => { r.touched = Date.now(); r.players.forEach(p => send(p.ws, { t: 'state', you: p.id, token: p.token, ...view(r) })); save(); };
 const say = (r, text, fx) => { r.log.push(text); r.players.forEach(p => send(p.ws, { t: 'say', text, fx })); bc(r); };
 
 // ===== Persistência (sobrevive a reinícios quando o disco é mantido) =====
@@ -73,7 +80,7 @@ function save() {
   saveT = setTimeout(() => {
     try {
       fs.writeFileSync(FILE, JSON.stringify(Object.values(rooms).map(r => ({ code: r.code, phase: r.phase, host: r.host, cfg: r.cfg, queue: r.queue, lot: r.lot, log: r.log, chat: r.chat,
-        sales: r.sales, copaRes: r.copaRes, torneio: r.torneio, unsold: r.unsold, round: r.round, warned: r.warned, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, budget: p.budget, squad: p.squad })) }))));
+        sales: r.sales, copaRes: r.copaRes, torneio: r.torneio, unsold: r.unsold, round: r.round, warned: r.warned, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, token: p.token, budget: p.budget, squad: p.squad })) }))));
     } catch (e) {}
   }, 800);
 }
@@ -161,30 +168,74 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest' };
+const FILES = { '/': 'index.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png' };
+const SEC = {
+  'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+};
+const siteOf = q => SITE_URL || (String(q.headers['x-forwarded-proto'] || 'http').split(',')[0] + '://' + q.headers.host);
+function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores leem o texto)
+  const g = {}; SQUADS.forEach(x => (g[x.t] = g[x.t] || []).push(x));
+  return Object.keys(g).sort((a, b) => a.localeCompare(b, 'pt')).map(n => `<details><summary>${escH(n)} <span>${g[n].map(x => x.y).sort().join(' · ')}</span></summary>` +
+    g[n].sort((a, b) => a.y - b.y).map(x => `<h3>Copa ${x.y}</h3>` + x.p.map(p => `<span class="chip">${escH(p[0])} <b>${p[2]}</b> <span class="mu">${p[1]}</span></span>`).join('')).join('') + '</details>').join('');
+}
 const server = http.createServer((q, s) => {
-  const f = FILES[new URL(q.url, 'http://x').pathname];
-  if (!f) { s.writeHead(404); return s.end('404'); }
-  fs.readFile(path.join(__dirname, f), (e, d) => { if (e) { s.writeHead(404); return s.end('404'); } const type = f.endsWith('.js') ? 'text/javascript; charset=utf-8' : f.endsWith('.png') ? 'image/png' : f.endsWith('.ico') ? 'image/x-icon' : f.endsWith('.webmanifest') ? 'application/manifest+json; charset=utf-8' : 'text/html; charset=utf-8'; s.writeHead(200, { 'Content-Type': type }); s.end(d); });
+  const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
+  if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
+  if (pth === '/robots.txt') { s.writeHead(200, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end(`User-agent: *\nAllow: /\nDisallow: /manager-teste\nDisallow: /*?sala=\n\nSitemap: ${site}/sitemap.xml\n`); }
+  if (pth === '/sitemap.xml') {
+    s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
+    return s.end('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ['/', '/leilao', '/dado', '/selecoes'].map(u => `<url><loc>${site}${u}</loc></url>`).join('') + '</urlset>');
+  }
+  const f = FILES[pth];
+  if (!f) { s.writeHead(404, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end('404'); }
+  fs.readFile(path.join(__dirname, f), (e, d) => {
+    if (e) { s.writeHead(404, hdr); return s.end('404'); }
+    const type = f.endsWith('.js') ? 'text/javascript; charset=utf-8' : f.endsWith('.png') ? 'image/png' : f.endsWith('.ico') ? 'image/x-icon' : f.endsWith('.webmanifest') ? 'application/manifest+json; charset=utf-8' : 'text/html; charset=utf-8';
+    if (type.startsWith('text/html')) {
+      let h = d.toString('utf8').split('{{SITE}}').join(site);
+      if (f === 'selecoes.html') h = h.replace('<!--SQUADS-->', squadsHtml()).replace('{{N_SQUADS}}', SQUADS.length).replace('{{N_TEAMS}}', new Set(SQUADS.map(x => x.t)).size);
+      d = Buffer.from(h);
+    }
+    s.writeHead(200, { ...hdr, 'Content-Type': type, 'Cache-Control': type.startsWith('image') || type.includes('manifest') ? 'public, max-age=86400' : type.includes('javascript') ? 'public, max-age=3600' : 'no-cache' }); s.end(d);
+  });
 });
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 4096, verifyClient: ({ origin, req }) => {
+  if (!origin) return true; // clientes que não são navegador
+  try { const h = new URL(origin).host; return h === req.headers.host || (!!SITE_URL && h === new URL(SITE_URL).host); } catch { return false; }
+} });
 
-wss.on('connection', ws => {
-  let r, p;
+wss.on('connection', (ws, req) => {
+  const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+  ipConns[ip] = (ipConns[ip] || 0) + 1;
+  ws.on('close', () => { ipConns[ip] = Math.max(0, (ipConns[ip] || 1) - 1); });
+  if (ipConns[ip] > MAX_CONN_IP) return ws.close(1008, 'Muitas conexões');
+  let msgs = 0, win = Date.now(), r, p;
   const err = text => send(ws, { t: 'err', text });
   const handle = d => {
     let m; try { m = JSON.parse(d); } catch { return; }
     if (m.t === 'join') {
-      const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().slice(0, 16);
+      const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
       if (!code || !name) return err('Informe seu nome e o código da sala.');
+      if (!NAME_RE.test(name)) return err('Nome inválido: use de 2 a 16 letras, números ou espaços.');
       if (clean(name) !== name) return err('Nome não permitido.');
       if (!rooms[code] && m.re) return err('Essa sala não existe mais (o servidor reiniciou). Crie uma nova sala.');
+      if (!rooms[code]) {
+        if (Object.keys(rooms).length >= MAX_ROOMS) return err('O servidor está cheio no momento. Tente de novo em alguns minutos.');
+        const t = ipRooms[ip] = (ipRooms[ip] || []).filter(x => Date.now() - x < 3600e3); if (t.length >= MAX_NEW_ROOMS_IP_HOUR) return err('Muitas salas criadas. Tente mais tarde.'); t.push(Date.now());
+      }
       r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, torneio: null, unsold: [], round: 1, warned: {}, banned: [], cfg: { ...DEFAULT_CFG } });
       if (r.banned.includes(name)) { r = null; return err('Você foi removido desta sala.'); }
       p = r.players.find(x => x.name === name); // mesmo nome = reconexão
-      if (p) { p.ws = ws; }
+      if (p) { // reconexão: só quem tem o token da sessão (ou, no lobby, um lugar vazio) assume o lugar
+        const mine = p.token && m.token === p.token;
+        if (p.token && !mine && !(r.phase === 'lobby' && !p.ws)) return err('Esse nome já está em uso nesta sala. Escolha outro nome.');
+        if (!p.token || !mine) p.token = newToken();
+        const old = p.ws; p.ws = ws; if (old && old !== ws) { try { old.close(); } catch (e) {} }
+      }
       else if (r.phase !== 'lobby' || r.players.length >= MAX_PLAYERS) { r = null; return err('Sala em andamento ou cheia.'); }
-      else { p = { id: Math.random().toString(36).slice(2, 8), name, ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
+      else { p = { id: Math.random().toString(36).slice(2, 8), name, token: newToken(), ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
       if (!r.host || !r.players.some(x => x.id === r.host)) r.host = p.id;
       bc(r);
     } else if (!r || !p) return;
@@ -235,7 +286,7 @@ wss.on('connection', ws => {
       say(r, `${p.name} dá ${mi(a)} por ${l.n}!`, 'bid');
     }
   };
-  ws.on('message', d => { try { handle(d); } catch (e) { console.error('Erro ao tratar mensagem:', e); } });
+  ws.on('message', d => { const now = Date.now(); if (now - win > 1000) { win = now; msgs = 0; } if (++msgs > 30) return ws.close(1008, 'Muitas mensagens'); try { handle(d); } catch (e) { console.error('Erro ao tratar mensagem:', e); } });
   ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => {
     if (!p || !r || p.ws !== ws) return;
@@ -264,5 +315,9 @@ setInterval(() => {
     } catch (e) { console.error('Erro no vigia:', e); }
   }
 }, 2000 / T);
+setInterval(() => { // apaga salas sem ninguém online há mais de 3 horas
+  for (const [c, r] of Object.entries(rooms)) if (!r.players.some(p => p.ws) && Date.now() - (r.touched || 0) > 3 * 3600e3) { clearTimeout(r.timer); (r.timers || []).forEach(clearTimeout); delete rooms[c]; }
+  save();
+}, 10 * 60e3);
 restore();
 server.listen(process.env.PORT || 3000, () => console.log('Leilão de Futebol no ar!'));
