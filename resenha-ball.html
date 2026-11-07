@@ -24,17 +24,34 @@
 const $=id=>document.getElementById(id),canvas=$('pitch'),ctx=canvas.getContext('2d');let mode='bot',playing=false,online=false,ws=null,roomCode='',myId='',isHost=false,keys={},players=[],targetPlayers=null,ball={x:500,y:300,vx:0,vy:0},targetBall=null,onlineRenderActive=false,score=[0,0],time=90,last=0,botList=[],input={x:0,y:0,kick:false},botDifficulty='normal';
 let voiceRoom=null,voiceMicOn=false,voiceOutputMuted=false,voiceActiveSpeakers=[];
 function draw(){ctx.clearRect(0,0,1000,600);ctx.fillStyle='#438b43';ctx.fillRect(0,0,1000,600);for(let i=0;i<10;i++){ctx.fillStyle=i%2?'rgba(255,255,255,.055)':'rgba(0,0,0,.035)';ctx.fillRect(i*100,0,100,600)}ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=5;ctx.strokeRect(12,12,976,576);ctx.beginPath();ctx.moveTo(500,12);ctx.lineTo(500,588);ctx.stroke();ctx.beginPath();ctx.arc(500,300,90,0,Math.PI*2);ctx.stroke();ctx.strokeRect(12,190,115,220);ctx.strokeRect(873,190,115,220);ctx.strokeRect(12,240,45,120);ctx.strokeRect(943,240,45,120);const all=online?players:botList;all.forEach(p=>{ctx.beginPath();ctx.fillStyle=p.team===0?'#a8ff3f':'#ff6670';ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=p.id===myId?'#fff':'rgba(0,0,0,.45)';ctx.stroke();ctx.fillStyle='#08100a';ctx.font='bold 11px Inter';ctx.textAlign='center';ctx.fillText(p.id===myId?'VOCÊ':(p.name||'BOT').slice(0,7),p.x,p.y+4)});ctx.beginPath();ctx.fillStyle='#f8f8ee';ctx.arc(ball.x,ball.y,12,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#18221a';ctx.lineWidth=2;ctx.stroke()}
-function renderOnline(){
-  if(!online||!playing){onlineRenderActive=false;return;}
+let lastOnlineFrame=0;
+function renderOnline(now=performance.now()){
+  if(!online||!playing){onlineRenderActive=false;lastOnlineFrame=0;return;}
+  const dt=lastOnlineFrame?Math.min((now-lastOnlineFrame)/1000,.05):0;
+  lastOnlineFrame=now;
   if(targetPlayers){
     const byId=new Map(targetPlayers.map(p=>[p.id,p]));
-    players=players.map(p=>{const t=byId.get(p.id);return t?{...p,x:p.x+(t.x-p.x)*.28,y:p.y+(t.y-p.y)*.28}:p;});
+    players=players.map(p=>{
+      const t=byId.get(p.id);
+      if(!t)return p;
+      if(p.id===myId){
+        // Predição local: responde ao comando sem esperar o próximo pacote do servidor.
+        const d=Math.hypot(input.x,input.y)||1;
+        const predictedX=Math.max(24,Math.min(976,p.x+(input.x/d)*230*dt));
+        const predictedY=Math.max(24,Math.min(576,p.y+(input.y/d)*230*dt));
+        const error=Math.hypot(t.x-predictedX,t.y-predictedY);
+        // Corrige desvios grandes sem puxar o jogador para trás a cada atualização.
+        const correction=error>70?.08:0;
+        return { ...p, x:predictedX+(t.x-predictedX)*correction, y:predictedY+(t.y-predictedY)*correction };
+      }
+      return {...p,x:p.x+(t.x-p.x)*.28,y:p.y+(t.y-p.y)*.28};
+    });
   }
   if(targetBall){ball.x+=(targetBall.x-ball.x)*.28;ball.y+=(targetBall.y-ball.y)*.28;ball.vx=targetBall.vx;ball.vy=targetBall.vy;}
   draw();
   requestAnimationFrame(renderOnline);
 }
-function startOnlineRender(){if(!onlineRenderActive){onlineRenderActive=true;requestAnimationFrame(renderOnline);}}
+function startOnlineRender(){if(!onlineRenderActive){onlineRenderActive=true;lastOnlineFrame=0;requestAnimationFrame(renderOnline);}}
 function status(t){$('status').textContent=t}
 
 function voiceUi(){
