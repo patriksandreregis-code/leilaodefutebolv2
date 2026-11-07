@@ -47,7 +47,7 @@ function renderOnline(now=performance.now()){
       return {...p,x:p.x+(t.x-p.x)*.28,y:p.y+(t.y-p.y)*.28};
     });
   }
-  if(targetBall){ball.x+=(targetBall.x-ball.x)*.28;ball.y+=(targetBall.y-ball.y)*.28;ball.vx=targetBall.vx;ball.vy=targetBall.vy;}
+  if(targetBall){ball.x+=(targetBall.x-ball.x)*.75;ball.y+=(targetBall.y-ball.y)*.75;ball.vx=targetBall.vx;ball.vy=targetBall.vy;}
   draw();
   requestAnimationFrame(renderOnline);
 }
