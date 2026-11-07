@@ -241,7 +241,13 @@ const wss = new WebSocketServer({ server, maxPayload: 4096, verifyClient: ({ ori
 } });
 
 wss.on('connection', (ws, req) => {
-  if (new URL(req.url, 'http://x').pathname === '/resenha-ball-ws') return beatball.connect(ws);
+  const wsPath = new URL(req.url, 'http://x').pathname;
+  // O heartbeat precisa valer também para o Resenha Ball.
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('error', e => console.error('[WS] Erro:', wsPath, e.message));
+  console.log('[WS] Conexão aberta:', wsPath, req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'IP desconhecido');
+  if (wsPath === '/resenha-ball-ws') return beatball.connect(ws);
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   ipConns[ip] = (ipConns[ip] || 0) + 1;
   ws.on('close', () => { ipConns[ip] = Math.max(0, (ipConns[ip] || 1) - 1); });
@@ -322,7 +328,6 @@ wss.on('connection', (ws, req) => {
     }
   };
   ws.on('message', d => { const now = Date.now(); if (now - win > 1000) { win = now; msgs = 0; } if (++msgs > 30) return ws.close(1008, 'Muitas mensagens'); try { handle(d); } catch (e) { console.error('Erro ao tratar mensagem:', e); } });
-  ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => {
     if (!p || !r || p.ws !== ws) return;
     p.ws = null; const room = r, who = p; bc(room);
