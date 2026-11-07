@@ -14,15 +14,21 @@ p.vx=x/d*230;p.vy=y/d*230;
 p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);
 let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy);
 if(dist<30){
-  // Colisão circular: mantém a bola fora do corpo do jogador.
+  // Colisão circular com correção apenas da penetração, sem prender a bola
+  // numa distância fixa do jogador a cada atualização.
   let nx,ny;
   if(dist<.001){const speed=Math.hypot(p.vx,p.vy)||1;nx=p.vx/speed;ny=p.vy/speed;}
   else{nx=dx/dist;ny=dy/dist;}
-  b.x=p.x+nx*30;b.y=p.y+ny*30;
-  // Impulso baseado na velocidade relativa evita a bola "grudar" e ser carregada.
-  const relativeNormal=(b.vx-p.vx)*nx+(b.vy-p.vy)*ny;
-  if(relativeNormal<0){
-    const impulse=-(1+.35)*relativeNormal;
+  const penetration=30-dist;
+  b.x+=nx*(penetration+.5);b.y+=ny*(penetration+.5);
+
+  // A bola precisa ganhar velocidade para sair da frente do jogador.
+  const playerNormal=p.vx*nx+p.vy*ny;
+  const ballNormal=b.vx*nx+b.vy*ny;
+  if(ballNormal<playerNormal){
+    const minimumExitSpeed=Math.max(105,playerNormal+115);
+    const nextNormal=Math.max(minimumExitSpeed,ballNormal);
+    const impulse=nextNormal-ballNormal;
     b.vx+=impulse*nx;b.vy+=impulse*ny;
   }
 }
