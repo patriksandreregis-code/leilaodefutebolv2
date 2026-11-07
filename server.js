@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const http = require('http'), fs = require('fs'), path = require('path');
 const { WebSocketServer } = require('ws');
+const { AccessToken } = require('livekit-server-sdk');
 const POOL = require('./craques.js'), copa = require('./copa.js');
 const beatball = require('./resenha-ball-server.js');
 let SQUADS = [];
@@ -172,8 +173,8 @@ function removePlayer(r, id, why) {
 const FILES = { '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png' };
 const SEC = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=()',
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
 };
 const siteOf = q => SITE_URL || (String(q.headers['x-forwarded-proto'] || 'http').split(',')[0] + '://' + q.headers.host);
 function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores leem o texto)
@@ -184,6 +185,38 @@ function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores le
 const server = http.createServer((q, s) => {
   const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
   if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
+  if (pth === '/api/resenha-voice/token' && q.method === 'POST') {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    let raw = '', tooLarge = false;
+    q.on('data', chunk => { if (raw.length + chunk.length > 4096) tooLarge = true; else raw += chunk; });
+    q.on('end', async () => {
+      if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
+      let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const code = String(body.code || '').toUpperCase().trim().slice(0, 8);
+      const playerId = String(body.playerId || '').slice(0, 32);
+      const mode = body.mode === 'team' ? 'team' : 'all';
+      const room = beatball.rooms.get(code);
+      const player = room && room.players.get(playerId);
+      if (!room || !player || !player.ws || player.ws.readyState !== 1) return sendJson(403, { error: 'Entre primeiro em uma sala online do Resenha Ball.' });
+      if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
+        return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
+      }
+      try {
+        const voiceRoom = mode === 'team' ? 'resenha-' + code.toLowerCase() + '-team-' + player.team : 'resenha-' + code.toLowerCase();
+        const token = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+          identity: player.id, name: player.name, ttl: '10m',
+          metadata: JSON.stringify({ team: player.team })
+        });
+        token.addGrant({ roomJoin: true, room: voiceRoom, canPublish: true, canSubscribe: true });
+        const participantToken = await token.toJwt();
+        return sendJson(200, { server_url: process.env.LIVEKIT_URL, participant_token: participantToken, room: voiceRoom });
+      } catch (e) {
+        console.error('Erro ao gerar token Resenha Voice:', e.message);
+        return sendJson(500, { error: 'Não foi possível preparar a conexão de voz.' });
+      }
+    });
+    return;
+  }
   if (pth === '/robots.txt') { s.writeHead(200, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end(`User-agent: *\nAllow: /\nDisallow: /manager-teste\nDisallow: /*?sala=\n\nSitemap: ${site}/sitemap.xml\n`); }
   if (pth === '/sitemap.xml') {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
