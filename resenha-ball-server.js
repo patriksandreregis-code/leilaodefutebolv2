@@ -9,7 +9,7 @@ function start(r){if(r.players.size<2)return false;r.phase='playing';reset(r);r.
 function goal(r,t){r.score[t]++;r.ball={x:500,y:300,vx:0,vy:0};for(const p of r.players.values()){p.x=p.team?740:260;p.y=150+Math.random()*300;}bc(r);}
 function tick(r){if(r.phase!=='playing')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;r.time=Math.max(0,r.time-dt);const b=r.ball;
 for(const p of r.players.values()){const x=p.input.x,y=p.input.y,d=Math.hypot(x,y)||1;p.vx=x/d*230;p.vy=y/d*230;p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy)||1;if(dist<30){b.x=p.x+dx/dist*30;b.y=p.y+dy/dist*30;b.vx+=dx/dist*90+p.vx*.42;b.vy+=dy/dist*90+p.vy*.42;}if(p.input.kick&&now-p.kickAt>450&&dist<70){p.kickAt=now;b.vx+=dx/dist*520+p.vx*.5;b.vy+=dy/dist*520+p.vy*.5;}}
-b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<15||b.y>585){b.y=clamp(b.y,15,585);b.vy*=-.82;}if(b.x<5&&b.y>220&&b.y<380)return goal(r,1);if(b.x>995&&b.y>220&&b.y<380)return goal(r,0);if(b.x<15||b.x>985)b.vx*=-.8;if(r.time<=0){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
+const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.time<=0){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
 function connect(ws){
 let r=null,p=null;
 const err=t=>send(ws,{type:'error',message:t});
