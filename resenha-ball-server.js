@@ -8,7 +8,30 @@ function create(duration){let c=code();while(rooms.has(c))c=code();const r={code
 function start(r){if(r.players.size<2)return false;r.phase='playing';reset(r);r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
 function goal(r,t){r.score[t]++;r.ball={x:500,y:300,vx:0,vy:0};for(const p of r.players.values()){p.x=p.team?740:260;p.y=150+Math.random()*300;}bc(r);}
 function tick(r){if(r.phase!=='playing')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;r.time=Math.max(0,r.time-dt);const b=r.ball;
-for(const p of r.players.values()){const x=p.input.x,y=p.input.y,d=Math.hypot(x,y)||1;p.vx=x/d*230;p.vy=y/d*230;p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy)||1;if(dist<30){b.x=p.x+dx/dist*30;b.y=p.y+dy/dist*30;b.vx+=dx/dist*90+p.vx*.42;b.vy+=dy/dist*90+p.vy*.42;}if(p.input.kick&&now-p.kickAt>450&&dist<70){p.kickAt=now;b.vx+=dx/dist*520+p.vx*.5;b.vy+=dy/dist*520+p.vy*.5;}}
+for(const p of r.players.values()){
+const x=p.input.x,y=p.input.y,d=Math.hypot(x,y)||1;
+p.vx=x/d*230;p.vy=y/d*230;
+p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);
+let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy);
+if(dist<30){
+  // Colisão circular: mantém a bola fora do corpo do jogador.
+  let nx,ny;
+  if(dist<.001){const speed=Math.hypot(p.vx,p.vy)||1;nx=p.vx/speed;ny=p.vy/speed;}
+  else{nx=dx/dist;ny=dy/dist;}
+  b.x=p.x+nx*30;b.y=p.y+ny*30;
+  // Impulso baseado na velocidade relativa evita a bola "grudar" e ser carregada.
+  const relativeNormal=(b.vx-p.vx)*nx+(b.vy-p.vy)*ny;
+  if(relativeNormal<0){
+    const impulse=-(1+.35)*relativeNormal;
+    b.vx+=impulse*nx;b.vy+=impulse*ny;
+  }
+}
+if(p.input.kick&&now-p.kickAt>450&&dist<70){
+  const nx=dist<.001?(p.vx/(Math.hypot(p.vx,p.vy)||1)):dx/dist;
+  const ny=dist<.001?(p.vy/(Math.hypot(p.vx,p.vy)||1)):dy/dist;
+  p.kickAt=now;b.vx+=nx*520+p.vx*.5;b.vy+=ny*520+p.vy*.5;
+}
+}
 const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.time<=0){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
 function connect(ws){
 let r=null,p=null;
