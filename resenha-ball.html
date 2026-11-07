@@ -2,7 +2,7 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d0b"><title>Resenha Ball — Resenha do Fut</title><link rel="icon" href="/favicon-32x32.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#080d0b;--panel:#101713;--line:#29372d;--text:#f4f6f4;--muted:#9ca99f;--lime:#a8ff3f;--red:#ff626b;--blue:#66b7ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -10%,#20351b 0,transparent 50%),var(--bg);color:var(--text);font:14px Inter,system-ui,sans-serif}.wrap{width:min(1180px,calc(100% - 28px));margin:auto}.top{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{font-weight:900;font-size:17px;color:white;text-decoration:none}.brand span{color:var(--lime);font-family:"Barlow Condensed";font-size:22px}.back{color:#b8c4ba;text-decoration:none;font-size:12px}.hero{text-align:center;padding:36px 0 22px}.tag{color:var(--lime);font-size:10px;letter-spacing:2px;font-weight:900}.hero h1{font:900 clamp(42px,7vw,68px)/.95 "Barlow Condensed";margin:10px 0;text-transform:uppercase}.hero h1 span{color:var(--lime)}.hero p{color:var(--muted);margin:0}.layout{display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}.panel{background:linear-gradient(145deg,#141e17,#0e1510);border:1px solid var(--line);border-radius:16px;padding:18px}.panel h2{font-size:16px;margin:0 0 14px}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:15px}.tab,button,select,input{font:inherit}.tab{border:1px solid #344238;background:#0c130e;color:#aab7ad;padding:10px;border-radius:9px;font-weight:800;cursor:pointer}.tab.active{background:#24351e;color:var(--lime);border-color:#526d42}.field{display:grid;gap:6px;margin:10px 0}.field label{color:#aeb9b1;font-size:11px;font-weight:700}.field input,.field select{width:100%;background:#080e0a;color:white;border:1px solid #344238;border-radius:9px;padding:12px;outline:none}.btn{width:100%;border:0;border-radius:9px;padding:13px 14px;background:var(--lime);color:#101810;font-weight:900;cursor:pointer;margin-top:9px}.btn.secondary{background:#1b281e;color:#e9f5e8;border:1px solid #3c5139}.btn:disabled{opacity:.45;cursor:not-allowed}.hint{font-size:11px;color:#839087;line-height:1.6;margin:12px 0 0}.status{font-size:12px;color:var(--lime);min-height:18px;margin-top:10px}.hidden{display:none!important}.gamebox{border:1px solid #354536;border-radius:16px;overflow:hidden;background:#0b120d}.gamehead{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:#111a13}.score{font-weight:900;font-size:20px}.score small{font-size:10px;color:var(--muted);font-weight:700}.canvaswrap{background:#347c38;line-height:0}canvas{display:block;width:100%;height:auto;touch-action:none}.controls{padding:12px 15px;display:flex;justify-content:space-between;gap:12px;align-items:center;color:#98a69b;font-size:11px}.controlpad{display:none;gap:8px;align-items:center}.padgrid{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(2,34px);gap:4px}.padgrid button,.kick{background:#253529;border:1px solid #52634f;color:white;border-radius:8px;font-weight:900}.padgrid button{font-size:15px}.kick{padding:0 15px;background:#344b29;color:var(--lime)}.roombar{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.roomcode{font-weight:900;color:var(--lime);letter-spacing:2px}.players{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.player{padding:7px 9px;border-radius:8px;background:#1a251c;font-size:11px}.player.red{border-left:3px solid var(--red)}.player.blue{border-left:3px solid var(--blue)}.match-preview{margin-top:13px;padding:12px;border:1px solid #344238;border-radius:11px;background:#0b120d}.match-preview h3{margin:0 0 9px;font-size:12px;letter-spacing:.7px}.team-preview{display:grid;grid-template-columns:1fr 1fr;gap:8px}.team-card{padding:10px;border-radius:9px;background:#152018;min-width:0}.team-card.green{border-top:3px solid var(--lime)}.team-card.red{border-top:3px solid var(--red)}.team-card strong{display:block;font-size:11px;margin-bottom:7px}.team-roster{display:grid;gap:5px;color:#c1ccc3;font-size:11px;overflow-wrap:anywhere}.team-roster span{padding:4px 6px;border-radius:5px;background:#202c22}.team-roster .bot-entry{color:#aab6ac;font-style:italic}.match-settings{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.match-settings span{font-size:10px;color:#d3dfd5;background:#1b281e;padding:6px 8px;border-radius:6px}.preview-caption{font-size:10px;color:#87958a;margin-top:8px;line-height:1.5}.notice{padding:11px;border:1px solid #344238;border-radius:9px;color:#9eaaa1;font-size:11px;line-height:1.5;margin-top:12px}.mobiletip{display:none}@media(max-width:850px){.layout{grid-template-columns:1fr}.gamebox{grid-row:1}.controls{align-items:flex-start;flex-direction:column}.controlpad{display:flex}.mobiletip{display:block}}@media(max-width:480px){.hero{padding-top:28px}.panel{padding:15px}.top{height:62px}}
-:root{color-scheme:dark}a{color:inherit;text-decoration:none}.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b}.site-brand{display:flex;align-items:center;gap:12px;color:var(--text);font-weight:900;letter-spacing:-.6px}.site-brand-icon{width:52px;height:56px;display:block;object-fit:contain}.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--lime);font-family:"Barlow Condensed",Impact,sans-serif;font-style:italic;font-size:21px;letter-spacing:.3px}.site-nav{display:flex;align-items:center;gap:20px;font-size:13px;font-weight:700}.site-nav a{color:var(--muted);text-decoration:none}.site-nav a:hover{color:var(--lime)}.site-nav .home-cta{background:var(--lime);color:#101810;padding:10px 14px;border-radius:9px}.site-footer{width:min(1120px,calc(100% - 40px));margin:48px auto 0;border-top:1px solid #26332b;padding:24px 0 34px;color:#7e8b81;font-size:11px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.site-footer strong{color:#eaf0ea}@media(max-width:600px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-nav{gap:9px}.site-nav a:not(.home-cta){display:none}.site-brand-name{font-size:15px}.site-footer{width:calc(100% - 28px);margin-top:34px}}
+.gamehead{background:linear-gradient(110deg,#17231a,#0b120d);padding:15px 18px;border-bottom:1px solid #314334}.gamehead .tag{font-size:9px;letter-spacing:1.8px}.score{font-family:'Barlow Condensed',Impact,sans-serif;font-size:29px;letter-spacing:1px;text-shadow:0 2px 10px rgba(0,0,0,.35)}.score small{font-family:Inter,sans-serif;letter-spacing:1px}.canvaswrap{background:#173b24;position:relative}.gamebox{box-shadow:0 18px 50px rgba(0,0,0,.22);border-color:#405744}.roombar{background:#0d160f}.controlpad button:active,.kick:active{transform:scale(.96)}:root{color-scheme:dark}a{color:inherit;text-decoration:none}.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b}.site-brand{display:flex;align-items:center;gap:12px;color:var(--text);font-weight:900;letter-spacing:-.6px}.site-brand-icon{width:52px;height:56px;display:block;object-fit:contain}.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--lime);font-family:"Barlow Condensed",Impact,sans-serif;font-style:italic;font-size:21px;letter-spacing:.3px}.site-nav{display:flex;align-items:center;gap:20px;font-size:13px;font-weight:700}.site-nav a{color:var(--muted);text-decoration:none}.site-nav a:hover{color:var(--lime)}.site-nav .home-cta{background:var(--lime);color:#101810;padding:10px 14px;border-radius:9px}.site-footer{width:min(1120px,calc(100% - 40px));margin:48px auto 0;border-top:1px solid #26332b;padding:24px 0 34px;color:#7e8b81;font-size:11px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.site-footer strong{color:#eaf0ea}@media(max-width:600px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-nav{gap:9px}.site-nav a:not(.home-cta){display:none}.site-brand-name{font-size:15px}.site-footer{width:calc(100% - 28px);margin-top:34px}}
 .voice-panel{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 15px;border-top:1px solid var(--line);background:#0d160f}.voice-title{font-weight:900;color:var(--lime);font-size:12px;letter-spacing:.5px}.voice-panel select,.voice-panel button{font:inherit;border:1px solid #3a4b3d;border-radius:8px;padding:9px 11px;background:#17231a;color:#eaf2eb;font-size:11px;font-weight:800}.voice-panel button.primary{background:var(--lime);color:#101810;border-color:var(--lime)}.voice-panel button:disabled{opacity:.45}.voice-status{font-size:11px;color:var(--muted);flex-basis:100%}.voice-speakers{font-size:11px;color:#c4d1c6;flex-basis:100%}
 </style></head><body><header class="site-header"><a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<span>DO FUT.</span></span></a><nav class="site-nav" aria-label="Navegação principal"><a href="/">Início</a><a href="/leilao">Leilão</a><a href="/dado">Dado da Copa</a><a class="home-cta" href="/">Menu de jogos ↗</a></nav></header><div class="wrap">
 <section class="hero"><div class="tag">NOVO MODO DE JOGO · FUTEBOL ARCADE</div><h1>RESENHA <span>BALL</span></h1><p>Domine a bola, acerte o chute e faça chover gols.</p></section>
@@ -23,7 +23,73 @@
 <script>
 const $=id=>document.getElementById(id),canvas=$('pitch'),ctx=canvas.getContext('2d');let mode='bot',playing=false,online=false,ws=null,roomCode='',myId='',isHost=false,keys={},players=[],targetPlayers=null,ball={x:500,y:300,vx:0,vy:0},targetBall=null,onlineRenderActive=false,score=[0,0],time=90,last=0,botList=[],input={x:0,y:0,kick:false},botDifficulty='normal',goldenGoal=false;
 let voiceRoom=null,voiceMicOn=false,voiceOutputMuted=false,voiceActiveSpeakers=[],targetBallAt=0;
-function draw(){ctx.clearRect(0,0,1000,600);ctx.fillStyle='#438b43';ctx.fillRect(0,0,1000,600);for(let i=0;i<10;i++){ctx.fillStyle=i%2?'rgba(255,255,255,.055)':'rgba(0,0,0,.035)';ctx.fillRect(i*100,0,100,600)}ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=5;ctx.strokeRect(12,12,976,576);ctx.beginPath();ctx.moveTo(500,12);ctx.lineTo(500,588);ctx.stroke();ctx.beginPath();ctx.arc(500,300,90,0,Math.PI*2);ctx.stroke();ctx.strokeRect(12,190,115,220);ctx.strokeRect(873,190,115,220);ctx.strokeRect(12,240,45,120);ctx.strokeRect(943,240,45,120);const all=online?players:botList;all.forEach(p=>{ctx.beginPath();ctx.fillStyle=p.team===0?'#a8ff3f':'#ff6670';ctx.arc(p.x,p.y,18,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle=p.id===myId?'#fff':'rgba(0,0,0,.45)';ctx.stroke();ctx.fillStyle='#08100a';ctx.font='bold 11px Inter';ctx.textAlign='center';ctx.fillText(p.id===myId?'VOCÊ':(p.name||'BOT').slice(0,7),p.x,p.y+4)});ctx.beginPath();ctx.fillStyle='#f8f8ee';ctx.arc(ball.x,ball.y,12,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#18221a';ctx.lineWidth=2;ctx.stroke()}
+function draw(){
+  ctx.clearRect(0,0,1000,600);
+  // Moldura externa e gramado
+  const outer=ctx.createLinearGradient(0,0,1000,600);outer.addColorStop(0,'#101b13');outer.addColorStop(1,'#050a07');
+  ctx.fillStyle=outer;ctx.fillRect(0,0,1000,600);
+  ctx.save();ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=22;ctx.shadowOffsetY=8;
+  const turf=ctx.createLinearGradient(0,12,0,588);turf.addColorStop(0,'#26733c');turf.addColorStop(.5,'#318748');turf.addColorStop(1,'#205f34');
+  ctx.fillStyle=turf;ctx.fillRect(20,20,960,560);ctx.restore();
+  // Faixas de gramado
+  for(let i=0;i<12;i++){ctx.fillStyle=i%2?'rgba(255,255,255,.035)':'rgba(0,0,0,.045)';ctx.fillRect(20+i*80,20,80,560);}
+  // Textura discreta do gramado
+  ctx.save();ctx.globalAlpha=.09;ctx.strokeStyle='#d7f5d4';ctx.lineWidth=1;
+  for(let y=30;y<580;y+=18){ctx.beginPath();ctx.moveTo(22,y);ctx.lineTo(978,y);ctx.stroke();}
+  ctx.restore();
+  // Traves e redes
+  function goal(x,dir){
+    ctx.save();ctx.fillStyle='rgba(4,12,7,.3)';ctx.fillRect(x-5,244,10,112);
+    ctx.strokeStyle='rgba(235,255,239,.55)';ctx.lineWidth=1;
+    for(let y=250;y<=350;y+=10){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+dir*34,y);ctx.stroke();}
+    for(let xx=0;xx<=34;xx+=8){ctx.beginPath();ctx.moveTo(x+dir*xx,250);ctx.lineTo(x+dir*xx,350);ctx.stroke();}
+    ctx.fillStyle='#f4fff4';ctx.fillRect(x-3,240,6,120);ctx.fillRect(x+dir*32-3,240,6,120);
+    ctx.fillRect(x-3,240,dir*35+3,5);ctx.fillRect(x-3,355,dir*35+3,5);
+    ctx.restore();
+  }
+  goal(20,-1);goal(980,1);
+  // Marcações do campo
+  ctx.save();ctx.strokeStyle='rgba(245,255,245,.82)';ctx.lineWidth=3;ctx.shadowColor='rgba(0,0,0,.16)';ctx.shadowBlur=2;
+  ctx.strokeRect(20,20,960,560);ctx.beginPath();ctx.moveTo(500,20);ctx.lineTo(500,580);ctx.stroke();
+  ctx.beginPath();ctx.arc(500,300,82,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,.85)';ctx.beginPath();ctx.arc(500,300,4,0,Math.PI*2);ctx.fill();
+  ctx.strokeRect(20,185,132,230);ctx.strokeRect(848,185,132,230);
+  ctx.strokeRect(20,240,54,120);ctx.strokeRect(926,240,54,120);
+  ctx.beginPath();ctx.arc(112,300,3,0,Math.PI*2);ctx.arc(888,300,3,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // Jogadores
+  const all=online?players:botList;
+  all.forEach((p,i)=>{
+    const green=p.team===0,base=green?'#a8ff3f':'#ff626b',dark=green?'#477d17':'#a92336',light=green?'#e0ff9a':'#ffb0b4';
+    ctx.save();ctx.translate(p.x,p.y);
+    // Sombra e halo de seleção
+    ctx.beginPath();ctx.ellipse(1,13,17,7,0,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.32)';ctx.fill();
+    if(p.id===myId){ctx.beginPath();ctx.arc(0,0,25,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,.8)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+    // Camisa estilizada
+    const jersey=ctx.createRadialGradient(-6,-8,2,0,0,23);jersey.addColorStop(0,light);jersey.addColorStop(.45,base);jersey.addColorStop(1,dark);
+    ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fillStyle=jersey;ctx.fill();
+    ctx.lineWidth=2.5;ctx.strokeStyle=green?'#e8ffc3':'#ffd0d1';ctx.stroke();
+    // Gola e número
+    ctx.beginPath();ctx.arc(0,-12,5,0,Math.PI);ctx.strokeStyle='rgba(15,25,15,.65)';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=green?'#203713':'#5a101b';ctx.font='900 12px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String((i%9)+1),0,2);
+    // Identificação
+    const label=p.id===myId?'VOCÊ':(p.name||'BOT').slice(0,9);
+    ctx.font='800 10px Inter';const w=ctx.measureText(label).width+12;
+    ctx.fillStyle='rgba(5,12,7,.82)';ctx.beginPath();ctx.roundRect(-w/2,22,w,17,5);ctx.fill();
+    ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.fillText(label,0,30.5);
+    ctx.restore();
+  });
+  // Bola com volume e desenho
+  ctx.save();ctx.translate(ball.x,ball.y);
+  ctx.beginPath();ctx.ellipse(2,10,12,5,0,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.3)';ctx.fill();
+  const bg=ctx.createRadialGradient(-4,-5,1,0,0,13);bg.addColorStop(0,'#fff');bg.addColorStop(.75,'#e9eee8');bg.addColorStop(1,'#9ba69c');
+  ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle='#26312b';ctx.beginPath();ctx.moveTo(-3,-4);ctx.lineTo(2,-6);ctx.lineTo(6,-2);ctx.lineTo(4,3);ctx.lineTo(-2,3);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(35,48,39,.8)';ctx.lineWidth=1.3;
+  for(let a=0;a<5;a++){const ang=a*Math.PI*2/5;ctx.beginPath();ctx.moveTo(Math.cos(ang)*5,Math.sin(ang)*5);ctx.lineTo(Math.cos(ang)*12,Math.sin(ang)*12);ctx.stroke();}
+  ctx.restore();ctx.strokeStyle='rgba(20,30,22,.55)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,11,0,Math.PI*2);ctx.stroke();ctx.restore();
+}
 let lastOnlineFrame=0;
 function renderOnline(now=performance.now()){
   if(!online||!playing){onlineRenderActive=false;lastOnlineFrame=0;return;}
