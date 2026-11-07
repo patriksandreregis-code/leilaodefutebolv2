@@ -61,7 +61,10 @@ const $ = id => document.getElementById(id);
 const PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' }, ORDER = ['GK', 'DEF', 'MID', 'ATT'];
 const FORM = { '4-3-3': [4, 3, 3], '4-4-2': [4, 4, 2], '3-5-2': [3, 5, 2], '5-3-2': [5, 3, 2], '4-5-1': [4, 5, 1], '3-4-3': [3, 4, 3] };
 const STY = ['Defensivo', 'Equilibrado', 'Ofensivo'], DIF = ['Fácil', 'Normal', 'Difícil'];
-const cfg = { f: '4-3-3', style: 1, diff: 1, fmt: 48 };
+const cfg = { f: '4-3-3', style: 1, diff: 1, show: 1, fmt: 48 };
+const POS3 = { GK: 'GOL', DEF: 'ZAG', MID: 'MEI', ATT: 'ATA' };
+// overall escondido só enquanto o time é montado; aparece quando a escalação fica completa
+const reveal = () => !G || G.show !== 0 || G.phase === 'ready' || G.phase === 'camp';
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const today = () => new Date().toLocaleDateString('sv-SE');
 const hash = s => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; };
@@ -79,7 +82,7 @@ function start(daily) {
   const f = FORM[cfg.f];
   G = { daily, F: { GK: 1, DEF: f[0], MID: f[1], ATT: f[2] }, R: daily ? seeded(hash('dado' + today())) : Math.random,
     seed: daily ? today() : Math.random().toString(36).slice(2, 8).toUpperCase(), deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] },
-    picked: new Set(), n: 0, cur: null, rr: 3, phase: 'roll', rev: 0 };
+    picked: new Set(), n: 0, cur: null, rr: 3, phase: 'roll', rev: 0, show: cfg.show };
   render();
 }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
@@ -160,7 +163,7 @@ function simulate() {
   const sc = {}; M.forEach(m => m.us.forEach(n => sc[n] = (sc[n] || 0) + 1));
   const top = Object.entries(sc).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const res = { champ, out, wins: M.filter(m => m.won).length, losses: M.filter(m => !m.won && !m.draw).length, gf: M.reduce((s, m) => s + m.gf, 0), ga: M.reduce((s, m) => s + m.ga, 0),
-    rating: Math.round((me.s.off + me.s.def) / 2 * 10) / 10, top, date: today(), daily: G.daily };
+    rating: Math.round((me.s.off + me.s.def) / 2 * 10) / 10, top, date: today(), daily: G.daily, blind: G.show === 0 };
   G.camp = { matches: M, res }; G.phase = 'camp'; G.rev = 0;
   const rk = store.get('dado_rank2', []); rk.push(res);
   rk.sort((a, b) => b.champ - a.champ || b.wins - a.wins || (b.gf - b.ga) - (a.gf - a.ga)); store.set('dado_rank2', rk.slice(0, 10));
@@ -179,6 +182,8 @@ function render() {
       <div class="lbl">Formação</div>${seg('f', Object.keys(FORM).map(k => [k, k]), cfg.f)}
       <div class="lbl">Estilo</div>${seg('style', STY.map((l, i) => [i, l]), cfg.style)}
       <div class="lbl">Dificuldade dos adversários</div>${seg('diff', DIF.map((l, i) => [i, l]), cfg.diff)}
+      <div class="lbl">Overall dos jogadores ao montar o time</div>${seg('show', [[1, 'Mostrar'], [0, 'Esconder (às cegas)']], cfg.show)}
+      ${cfg.show === 0 ? '<p class="mu" style="margin:-.4rem 0 .9rem;font-size:.85rem">Você escolhe só pelo nome e pela posição. As notas aparecem quando a escalação estiver completa.</p>' : ''}
       <div class="lbl">Formato da Copa</div>${seg('fmt', [[32, '32 seleções · 7 jogos'], [48, '48 seleções · 8 jogos']], cfg.fmt)}
       <button class="pri" onclick="start(false)">Jogo livre</button> <button onclick="start(true)">Desafio do dia ${done ? '(ver resultado)' : '(mesmo sorteio para todos)'}</button>`;
   } else if (G.phase === 'roll') {
@@ -188,9 +193,9 @@ function render() {
     h = `<div class="lbl">Saiu</div><div class="big">${esc(G.cur.t)} ${G.cur.y}</div>
       <div class="lbl" style="margin-top:.6rem">Não curtiu? Re-sorteie · ${G.rr} restantes</div>
       <div class="seg"><button ${G.rr ? '' : 'disabled'} onclick="reroll('team')">↺ Outra seleção</button><button ${G.rr && cupOk ? '' : 'disabled'} onclick="reroll('cup')">↺ Outra Copa</button></div>` +
-      ORDER.map(pos => `<div class="lbl">${PN[pos]}s (${G.team[pos].length}/${G.F[pos]})</div><div class="pl">` + G.cur.p.filter(x => x[1] === pos).map(x => {
+      ORDER.map(pos => `<div class="lbl">${PN[pos]}s (${G.team[pos].length}/${G.F[pos]})</div><div class="pl">` + (G.show === 0 ? G.cur.p.filter(x => x[1] === pos).sort((a, b) => a[0].localeCompare(b[0], 'pt')) : G.cur.p.filter(x => x[1] === pos)).map(x => {
         const ok = !G.picked.has(x[0]) && G.team[pos].length < G.F[pos];
-        return `<button ${ok ? '' : 'disabled'} onclick="pick(this.dataset.n)" data-n="${esc(x[0])}">${esc(x[0])} <b>${x[2]}</b></button>`;
+        return `<button ${ok ? '' : 'disabled'} onclick="pick(this.dataset.n)" data-n="${esc(x[0])}">${esc(x[0])}${reveal() ? ` <b>${x[2]}</b>` : ''}</button>`;
       }).join('') + '</div>').join('');
   } else if (G.phase === 'ready') {
     h = `<div class="lbl">Escalação completa</div><div class="big">11/11</div>
@@ -215,20 +220,20 @@ function campHtml() {
     <p><button class="pri" onclick="share()">Copiar resultado</button> <button onclick="G=null;render()">Jogar de novo</button></p>`;
 }
 function share() {
-  const r = G.camp.res, t = `Dado da Copa ${G.daily ? today() : '#' + G.seed}: ${r.champ ? 'CAMPEÃO DO MUNDO 🏆' : 'eliminado em ' + r.out} · ${r.wins} vitórias, ${r.gf}x${r.ga} em gols. Consegue ser campeão? ${location.origin}/dado`;
+  const r = G.camp.res, t = `Dado da Copa ${G.daily ? today() : '#' + G.seed}: ${r.champ ? 'CAMPEÃO DO MUNDO 🏆' : 'eliminado em ' + r.out} · ${r.wins} vitórias, ${r.gf}x${r.ga} em gols${r.blind ? ' (sem ver as notas!)' : ''}. Consegue ser campeão? ${location.origin}/dado`;
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => alert('Copiado!'), () => prompt('Copie:', t));
 }
 function pitch() {
   const F = G ? G.F : (f => ({ GK: 1, DEF: f[0], MID: f[1], ATT: f[2] }))(FORM[cfg.f]), T = G ? G.team : { GK: [], DEF: [], MID: [], ATT: [] };
   $('pitch').innerHTML = '<div class="field">' + ['ATT', 'MID', 'DEF', 'GK'].map(pos => '<div class="row">' + Array.from({ length: F[pos] }, (_, i) => {
     const x = T[pos][i];
-    return x ? `<div class="sl" title="${esc(x[0])}"><div class="dot f">${x[2]}</div><small>${esc(x[0])}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>';
+    return x ? `<div class="sl" title="${esc(x[0])}"><div class="dot f"${reveal() ? '' : ' style="font-size:.72rem"'}>${reveal() ? x[2] : POS3[x[1]]}</div><small>${esc(x[0])}</small></div>` : '<div class="sl"><div class="dot"></div><small>&nbsp;</small></div>';
   }).join('') + '</div>').join('') + '</div>';
 }
 function rank() {
   const rk = store.get('dado_rank2', []);
   $('rank').innerHTML = '<h2 style="font-size:1.6rem">Melhores campanhas (neste aparelho)</h2>' + (rk.length ?
-    '<ol>' + rk.map(r => `<li><b>${r.champ ? '🏆 Campeão' : esc(r.out)}</b> <span class="mu">· ${r.wins} vitórias · ${r.gf}x${r.ga} · ${r.date}${r.daily ? ' · desafio' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma campanha ainda.</p>');
+    '<ol>' + rk.map(r => `<li><b>${r.champ ? '🏆 Campeão' : esc(r.out)}</b> <span class="mu">· ${r.wins} vitórias · ${r.gf}x${r.ga} · ${r.date}${r.daily ? ' · desafio' : ''}${r.blind ? ' · às cegas' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma campanha ainda.</p>');
 }
 render();
 </script></body></html>
