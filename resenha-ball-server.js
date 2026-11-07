@@ -7,8 +7,8 @@ function reset(r){r.score=[0,0];r.time=r.duration;r.ball={x:500,y:300,vx:0,vy:0}
 function fillBots(r){r.bots=[];const counts=[0,0];for(const p of r.players.values())counts[p.team]++;const target=Math.max(2,counts[0],counts[1]);for(let team=0;team<2;team++){while(counts[team]<target){const slot=counts[team]++;r.bots.push({id:'bot-'+team+'-'+slot,name:'BOT '+(slot+1),team,x:team?740:260,y:180+slot*80,vx:0,vy:0,kickAt:0,bot:true});}}}
 function create(duration){let c=code();while(rooms.has(c))c=code();const r={code:c,host:null,phase:'lobby',players:new Map(),bots:[],score:[0,0],duration:[60,90,180,300].includes(+duration)?+duration:90,time:90,ball:{x:500,y:300,vx:0,vy:0},last:Date.now(),timer:null};rooms.set(c,r);return r;}
 function start(r){if(r.players.size<1)return false;fillBots(r);r.phase='playing';reset(r);r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
-function goal(r,t){r.score[t]++;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;}bc(r);}
-function tick(r){if(r.phase!=='playing')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;r.time=Math.max(0,r.time-dt);const b=r.ball;
+function goal(r,t){r.score[t]++;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;}if(r.phase==='golden_goal'){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
+function tick(r){if(r.phase!=='playing'&&r.phase!=='golden_goal')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;if(r.phase==='playing')r.time=Math.max(0,r.time-dt);const b=r.ball;
 const all=[...r.players.values(),...r.bots];
 for(const p of all){
  let x=0,y=0,kick=false;
@@ -36,7 +36,7 @@ for(const p of all){
   p.kickAt=now;b.vx+=nx*(p.bot?430:520)+p.vx*.5;b.vy+=ny*(p.bot?430:520)+p.vy*.5;
  }
 }
-const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.time<=0){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
+const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.phase==='playing'&&r.time<=0){if(r.score[0]===r.score[1])r.phase='golden_goal';else{r.phase='finished';clearInterval(r.timer);r.timer=null;}}bc(r);}
 function connect(ws){
 let r=null,p=null;
 const err=t=>send(ws,{type:'error',message:t});
