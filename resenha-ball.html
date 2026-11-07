@@ -37,24 +37,8 @@ function renderOnline(now=performance.now()){
       if(p.id===myId){
         // Predição local: responde ao comando sem esperar o próximo pacote do servidor.
         const d=Math.hypot(input.x,input.y)||1;
-        let predictedX=Math.max(24,Math.min(976,p.x+(input.x/d)*230*dt));
-        let predictedY=Math.max(24,Math.min(576,p.y+(input.y/d)*230*dt));
-
-        // Colisão visual local: impede a previsão do jogador de atravessar a
-        // bola enquanto aguardamos a física autoritativa do servidor.
-        if(targetBall){
-          let bx=predictedX-targetBall.x,by=predictedY-targetBall.y;
-          let distance=Math.hypot(bx,by);
-          const minDistance=32;
-          if(distance<minDistance){
-            if(distance<.001){
-              const moveLength=Math.hypot(input.x,input.y)||1;
-              bx=-(input.x/moveLength);by=-(input.y/moveLength);distance=1;
-            }
-            predictedX=targetBall.x+(bx/distance)*minDistance;
-            predictedY=targetBall.y+(by/distance)*minDistance;
-          }
-        }
+        const predictedX=Math.max(24,Math.min(976,p.x+(input.x/d)*230*dt));
+        const predictedY=Math.max(24,Math.min(576,p.y+(input.y/d)*230*dt));
         const error=Math.hypot(t.x-predictedX,t.y-predictedY);
         // Corrige desvios grandes sem puxar o jogador para trás a cada atualização.
         const correction=error>70?.08:0;
