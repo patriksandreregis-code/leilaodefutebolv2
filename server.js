@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const http = require('http'), fs = require('fs'), path = require('path');
 const { WebSocketServer } = require('ws');
 const POOL = require('./craques.js'), copa = require('./copa.js');
-const beatball = require('./beatball-server.js');
+const beatball = require('./resenha-ball-server.js');
 let SQUADS = [];
 try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'utf8') + ';return SQUADS')(); } catch (e) { console.log('dados.js não carregado:', e.message); }
 
@@ -169,7 +169,7 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/': 'index.html', '/beatball': 'beatball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png' };
+const FILES = { '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png' };
 const SEC = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
@@ -208,7 +208,7 @@ const wss = new WebSocketServer({ server, maxPayload: 4096, verifyClient: ({ ori
 } });
 
 wss.on('connection', (ws, req) => {
-  if (new URL(req.url, 'http://x').pathname === '/beatball-ws') return beatball.connect(ws);
+  if (new URL(req.url, 'http://x').pathname === '/resenha-ball-ws') return beatball.connect(ws);
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   ipConns[ip] = (ipConns[ip] || 0) + 1;
   ws.on('close', () => { ipConns[ip] = Math.max(0, (ipConns[ip] || 1) - 1); });
