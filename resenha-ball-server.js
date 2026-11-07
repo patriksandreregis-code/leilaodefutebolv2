@@ -57,7 +57,7 @@ p={id,name:name(m.name),team:a<=b?0:1,ws,x:260,y:300,vx:0,vy:0,input:{x:0,y:0,ki
 r.players.set(id,p);if(!r.host)r.host=id;
 console.log('[Resenha Ball] Jogador entrou:',{room:r.code,player:p.name,id:p.id,players:r.players.size});
 send(ws,{type:'joined',code:r.code,id,host:r.host===id});bc(r);return;}
-if(!r||!p)return;if(m.type==='input'&&r.phase==='playing')p.input={x:clamp(+m.x||0,-1,1),y:clamp(+m.y||0,-1,1),kick:!!m.kick};else if(m.type==='start'&&p.id===r.host){if(!start(r))err('São necessários pelo menos 2 jogadores.');}else if(m.type==='back'&&p.id===r.host){clearInterval(r.timer);r.timer=null;r.phase='lobby';bc(r);}});
+if(!r||!p)return;if(m.type==='team'&&r.phase==='lobby'){const team=Number(m.team);if(team!==0&&team!==1)return;const occupied=[...r.players.values()].filter(x=>x.id!==p.id&&x.team===team).length;if(occupied>=4)return err('Essa equipe já está completa. Escolha a outra equipe.');p.team=team;bc(r);}else if(m.type==='input'&&r.phase==='playing')p.input={x:clamp(+m.x||0,-1,1),y:clamp(+m.y||0,-1,1),kick:!!m.kick};else if(m.type==='start'&&p.id===r.host){if(!start(r))err('São necessários pelo menos 2 jogadores.');}else if(m.type==='back'&&p.id===r.host){clearInterval(r.timer);r.timer=null;r.phase='lobby';bc(r);}});
 ws.on('close',(code,reason)=>{
 console.warn('[Resenha Ball] Socket fechado:',{code,reason:reason&&reason.toString(),room:r&&r.code,player:p&&p.name,id:p&&p.id,readyState:ws.readyState});
 if(!r||!p)return;
