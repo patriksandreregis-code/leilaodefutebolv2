@@ -44,6 +44,12 @@ grant usage, select on sequence public.game_results_id_seq to service_role;
 grant usage, select on sequence public.xp_history_id_seq to service_role;
 grant insert on public.game_results, public.xp_history to service_role;
 
+-- Remove políticas anteriores para permitir executar este arquivo novamente.
+drop policy if exists "Perfis públicos podem ser consultados" on public.profiles;
+drop policy if exists "Jogador atualiza apenas o próprio perfil" on public.profiles;
+drop policy if exists "Resultados verificados são públicos" on public.game_results;
+drop policy if exists "Histórico de XP é público para consulta" on public.xp_history;
+
 create policy "Perfis públicos podem ser consultados"
 on public.profiles for select to anon, authenticated using (true);
 create policy "Jogador atualiza apenas o próprio perfil"
