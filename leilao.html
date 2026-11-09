@@ -81,6 +81,7 @@ details{margin:.3rem 0}summary{cursor:pointer}
 .nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
 .nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
 @media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
+.voice-panel{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 15px;border:1px solid var(--line);border-radius:10px;background:#0d160f;margin:0 0 1rem}.voice-title{font-weight:900;color:var(--ac);font-size:12px;letter-spacing:.5px}.voice-panel button{font:inherit;border:1px solid #3a4b3d;border-radius:8px;padding:9px 11px;background:#17231a;color:#eaf2eb;font-size:11px;font-weight:800}.voice-panel button.primary{background:var(--ac);color:#101810;border-color:var(--ac)}.voice-panel button:disabled{opacity:.45}.voice-status,.voice-speakers{font-size:11px;color:var(--mu);flex-basis:100%}
 </style>
 <meta name="description" content="Crie uma sala, convide os amigos pelo WhatsApp e dispute craques atuais, lendas e jogadores do Brasileirão em um leilão ao vivo. Monte o melhor time sem estourar o orçamento.">
 <link rel="canonical" href="{{SITE}}/leilao">
@@ -123,6 +124,14 @@ details{margin:.3rem 0}summary{cursor:pointer}
       <button onclick="leave()">Sair</button>
     </div>
   </div>
+  <section class="voice-panel" id="auctionVoice">
+    <span class="voice-title">RESENHA VOICE · LEILÃO</span>
+    <button class="primary" id="auctionVoiceJoin" type="button">CONECTAR VOZ</button>
+    <button id="auctionVoiceMic" type="button" disabled>MICROFONE: —</button>
+    <button id="auctionVoiceOutput" type="button" disabled>ÁUDIO: LIGADO</button>
+    <span class="voice-status" id="auctionVoiceStatus">Conecte-se para conversar com todos os jogadores desta sala.</span>
+    <span class="voice-speakers" id="auctionVoiceSpeakers">Ninguém falando</span>
+  </section>
   <div class="grid">
     <div>
       <div class="panel" id="main"></div>
@@ -171,7 +180,7 @@ function join(create) {
   connect();
 }
 function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
-function leave() { store.set(null); location.href = '/leilao'; }
+function leave() { leaveAuctionVoice(); store.set(null); location.href = '/leilao'; }
 function connect() {
   if (ws && ws.readyState <= 1) return;
   clearTimeout(retry);
@@ -182,7 +191,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.t === 'state') { if (m.token && m.token !== token) { token = m.token; store.set({ name, room, token }); } S = m; S.at = Date.now(); render(); }
     else if (m.t === 'say') { speak(m.text); fx(m.fx); }
-    else if (m.t === 'kicked') { store.set(null); alert('Você foi removido da sala.'); location.href = '/leilao'; }
+    else if (m.t === 'kicked') { leaveAuctionVoice(); store.set(null); alert('Você foi removido da sala.'); location.href = '/leilao'; }
     else if (m.t === 'err') {
       if (/não existe mais/.test(m.text)) { store.set(null); alert(m.text); location.href = '/leilao'; return; }
       if (/acabou de ser vendido/.test(m.text)) return; // lance que chegou tarde: sem alerta
@@ -329,5 +338,51 @@ setInterval(() => {
   }
 }, 100);
 </script>
-<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script></body>
+<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script><script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<script>
+let auctionVoiceRoom=null,auctionVoiceMicOn=false,auctionVoiceOutputMuted=false;
+const voiceEl=id=>document.getElementById(id);
+function auctionVoiceUi(){
+ const joined=!!auctionVoiceRoom;
+ voiceEl('auctionVoiceJoin').textContent=joined?'DESCONECTAR VOZ':'CONECTAR VOZ';
+ voiceEl('auctionVoiceMic').disabled=!joined;
+ voiceEl('auctionVoiceOutput').disabled=!joined;
+ voiceEl('auctionVoiceMic').textContent='MICROFONE: '+(auctionVoiceMicOn?'LIGADO':'DESLIGADO');
+ voiceEl('auctionVoiceOutput').textContent='ÁUDIO: '+(auctionVoiceOutputMuted?'MUTADO':'LIGADO');
+}
+function auctionVoiceSpeakers(list){
+ const names=list.map(p=>p.name||p.identity).filter(Boolean);
+ voiceEl('auctionVoiceSpeakers').textContent=names.length?'Falando: '+names.join(', '):'Ninguém falando';
+}
+async function leaveAuctionVoice(){
+ const room=auctionVoiceRoom;auctionVoiceRoom=null;auctionVoiceMicOn=false;
+ if(room){try{await room.localParticipant.setMicrophoneEnabled(false);await room.disconnect()}catch(e){}}
+ document.querySelectorAll('audio[data-leilao-voice="1"]').forEach(a=>a.remove());
+ voiceEl('auctionVoiceSpeakers').textContent='Ninguém falando';voiceEl('auctionVoiceStatus').textContent='Você saiu da conversa por voz.';auctionVoiceUi();
+}
+async function joinAuctionVoice(){
+ if(auctionVoiceRoom){await leaveAuctionVoice();return;}
+ if(!S||!S.you||!S.code){voiceEl('auctionVoiceStatus').textContent='Entre primeiro em uma sala do Leilão.';return;}
+ if(!window.LivekitClient){voiceEl('auctionVoiceStatus').textContent='Não foi possível carregar o sistema de voz. Atualize a página.';return;}
+ const btn=voiceEl('auctionVoiceJoin');btn.disabled=true;voiceEl('auctionVoiceStatus').textContent='Conectando à sala de voz...';
+ try{
+  const response=await fetch('/api/leilao-voice/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,playerId:S.you})});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'Falha ao preparar a voz.');
+  const room=new LivekitClient.Room({adaptiveStream:true,dynacast:true});auctionVoiceRoom=room;
+  room.on(LivekitClient.RoomEvent.TrackSubscribed,(track)=>{
+   if(track.kind===LivekitClient.Track.Kind.Audio){const el=track.attach();el.autoplay=true;el.dataset.leilaoVoice='1';el.muted=auctionVoiceOutputMuted;document.body.appendChild(el);}
+  });
+  room.on(LivekitClient.RoomEvent.TrackUnsubscribed,track=>track.detach());
+  room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged,auctionVoiceSpeakers);
+  room.on(LivekitClient.RoomEvent.Disconnected,()=>{if(auctionVoiceRoom===room){auctionVoiceRoom=null;auctionVoiceMicOn=false;auctionVoiceUi();voiceEl('auctionVoiceStatus').textContent='Conexão de voz encerrada.';}});
+  await room.connect(data.server_url,data.participant_token);await room.localParticipant.setMicrophoneEnabled(true);
+  auctionVoiceMicOn=true;voiceEl('auctionVoiceStatus').textContent='Conectado! Todos nesta sala podem ouvir você.';auctionVoiceUi();
+ }catch(e){if(auctionVoiceRoom){try{await auctionVoiceRoom.disconnect()}catch(x){}auctionVoiceRoom=null;}auctionVoiceMicOn=false;auctionVoiceUi();voiceEl('auctionVoiceStatus').textContent=e.message||'Não foi possível conectar à voz.';}
+ finally{btn.disabled=false;}
+}
+voiceEl('auctionVoiceJoin').addEventListener('click',joinAuctionVoice);
+voiceEl('auctionVoiceMic').addEventListener('click',async()=>{if(!auctionVoiceRoom)return;try{auctionVoiceMicOn=!auctionVoiceMicOn;await auctionVoiceRoom.localParticipant.setMicrophoneEnabled(auctionVoiceMicOn);auctionVoiceUi();}catch(e){auctionVoiceMicOn=false;auctionVoiceUi();voiceEl('auctionVoiceStatus').textContent='Não foi possível acessar o microfone.';}});
+voiceEl('auctionVoiceOutput').addEventListener('click',()=>{auctionVoiceOutputMuted=!auctionVoiceOutputMuted;document.querySelectorAll('audio[data-leilao-voice="1"]').forEach(a=>a.muted=auctionVoiceOutputMuted);auctionVoiceUi();});
+window.addEventListener('pagehide',()=>{if(auctionVoiceRoom)auctionVoiceRoom.disconnect();});
+</script></body>
 </html>
