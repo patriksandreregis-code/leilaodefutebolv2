@@ -68,6 +68,19 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}td,th{text-align:left
 .dot.f{background:var(--ac);color:#241a00;border:2px solid #fff}
 .sl small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;text-shadow:0 1px 2px #000}
 details{margin:.3rem 0}summary{cursor:pointer}
+
+.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b;position:relative;z-index:30}
+.site-brand{display:flex;align-items:center;gap:12px;color:var(--text,var(--tx,#f4f6f4));text-decoration:none;font-weight:900;letter-spacing:-.6px;flex-shrink:0}
+.site-brand-icon{width:52px;height:56px;display:block;object-fit:contain}
+.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--lime,var(--ac,#a8ff3f));font:italic 900 21px "Barlow Condensed",Impact,sans-serif;letter-spacing:.3px}
+.site-nav{display:flex;align-items:center;gap:clamp(10px,1.6vw,20px);font-size:12px;font-weight:700;color:var(--muted,var(--mu,#a6b0a8))}
+.site-nav>a{color:inherit;text-decoration:none;white-space:nowrap}.site-nav>a:hover,.nav-dropdown-toggle:hover{color:var(--lime,var(--ac,#a8ff3f))}
+.site-nav .home-cta{background:var(--lime,var(--ac,#a8ff3f));color:#101810;padding:10px 14px;border-radius:9px}
+.nav-dropdown{position:relative}.nav-dropdown-toggle{border:0;background:none;color:inherit;font:inherit;padding:12px 0;cursor:pointer;white-space:nowrap}.nav-dropdown-toggle span{color:var(--lime,var(--ac,#a8ff3f));margin-left:4px}
+.nav-dropdown-menu{display:none;position:absolute;z-index:40;top:100%;left:-14px;min-width:220px;padding:8px;background:#111a14;border:1px solid #354633;border-radius:12px;box-shadow:0 18px 40px #0009}
+.nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
+.nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
+@media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
 </style>
 <meta name="description" content="Crie uma sala, convide os amigos pelo WhatsApp e dispute craques atuais, lendas e jogadores do Brasileirão em um leilão ao vivo. Monte o melhor time sem estourar o orçamento.">
 <link rel="canonical" href="{{SITE}}/leilao">
@@ -81,9 +94,14 @@ details{margin:.3rem 0}summary{cursor:pointer}
 <body>
 <div id="net" hidden style="position:fixed;top:0;left:0;right:0;z-index:50;background:#5c1f24;color:#fff;text-align:center;padding:.45rem;font-weight:600">Sem conexão. Reconectando… sua partida continua.</div>
 <header class="site-header">
-<a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<span>DO FUT.</span></span></a>
-<nav class="site-nav" aria-label="Navegação principal"><a href="/">Início</a><a href="/leilao">Leilão</a><a href="/dado">Dado da Copa</a><a class="home-cta" href="/">Menu de jogos ↗</a></nav>
-</header>
+<a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<br><span>DO FUT.</span></span></a>
+<nav class="site-nav" aria-label="Navegação principal">
+<a href="/#jogos">Jogos</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu">
+<a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
+</div></div>
+<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a><a class="home-cta" href="/#jogos">Jogar agora ↗</a>
+</nav></header>
 <div id="join" class="panel">
   <a href="/">← Voltar ao menu</a>
   <h1>Leilão de Futebol</h1>
@@ -311,5 +329,5 @@ setInterval(() => {
   }
 }, 100);
 </script>
-</body>
+<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script></body>
 </html>
