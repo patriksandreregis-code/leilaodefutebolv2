@@ -40,6 +40,19 @@ ol{margin:.3rem 0;padding-left:1.3rem}
 .sc{font:800 1.7rem 'Barlow Condensed','Arial Narrow',sans-serif}.sm{font-size:.85rem}
 table{width:100%;border-collapse:collapse;margin-top:.5rem;font-size:.9rem}td,th{padding:.25rem .4rem;text-align:left}tr.me{color:var(--ok);font-weight:700}
 .sl{flex:1;max-width:76px;width:auto}
+
+.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b;position:relative;z-index:30}
+.site-brand{display:flex;align-items:center;gap:12px;color:var(--text,var(--tx,#f4f6f4));text-decoration:none;font-weight:900;letter-spacing:-.6px;flex-shrink:0}
+.site-brand-icon{width:52px;height:56px;display:block;object-fit:contain}
+.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--lime,var(--ac,#a8ff3f));font:italic 900 21px "Barlow Condensed",Impact,sans-serif;letter-spacing:.3px}
+.site-nav{display:flex;align-items:center;gap:clamp(10px,1.6vw,20px);font-size:12px;font-weight:700;color:var(--muted,var(--mu,#a6b0a8))}
+.site-nav>a{color:inherit;text-decoration:none;white-space:nowrap}.site-nav>a:hover,.nav-dropdown-toggle:hover{color:var(--lime,var(--ac,#a8ff3f))}
+.site-nav .home-cta{background:var(--lime,var(--ac,#a8ff3f));color:#101810;padding:10px 14px;border-radius:9px}
+.nav-dropdown{position:relative}.nav-dropdown-toggle{border:0;background:none;color:inherit;font:inherit;padding:12px 0;cursor:pointer;white-space:nowrap}.nav-dropdown-toggle span{color:var(--lime,var(--ac,#a8ff3f));margin-left:4px}
+.nav-dropdown-menu{display:none;position:absolute;z-index:40;top:100%;left:-14px;min-width:220px;padding:8px;background:#111a14;border:1px solid #354633;border-radius:12px;box-shadow:0 18px 40px #0009}
+.nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
+.nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
+@media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
 </style><meta name="description" content="Role o dado, receba uma seleção de uma Copa do Mundo, escale um craque por vez e simule a Copa. Será que seu time chega a campeão? Tem desafio diário.">
 <link rel="canonical" href="{{SITE}}/dado">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Resenha do Fut"><meta property="og:locale" content="pt_BR">
@@ -49,7 +62,15 @@ table{width:100%;border-collapse:collapse;margin-top:.5rem;font-size:.9rem}td,th
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
 <body>
-<header class="site-header"><a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<span>DO FUT.</span></span></a><nav class="site-nav" aria-label="Navegação principal"><a href="/">Início</a><a href="/leilao">Leilão</a><a href="/dado">Dado da Copa</a><a class="home-cta" href="/">Menu de jogos ↗</a></nav></header><div class="wrap">
+<header class="site-header">
+<a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<br><span>DO FUT.</span></span></a>
+<nav class="site-nav" aria-label="Navegação principal">
+<a href="/#jogos">Jogos</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu">
+<a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
+</div></div>
+<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a><a class="home-cta" href="/#jogos">Jogar agora ↗</a>
+</nav></header><div class="wrap">
 <div class="top"><a href="/">← Menu</a><span class="mu" id="prog"></span></div>
 <div class="grid">
   <div><div class="panel" id="main"></div><div class="panel" id="rank"></div></div>
@@ -236,4 +257,4 @@ function rank() {
     '<ol>' + rk.map(r => `<li><b>${r.champ ? '🏆 Campeão' : esc(r.out)}</b> <span class="mu">· ${r.wins} vitórias · ${r.gf}x${r.ga} · ${r.date}${r.daily ? ' · desafio' : ''}${r.blind ? ' · às cegas' : ''}</span></li>`).join('') + '</ol>' : '<p class="mu">Nenhuma campanha ainda.</p>');
 }
 render();
-</script></body></html>
+</script><script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script></body></html>
