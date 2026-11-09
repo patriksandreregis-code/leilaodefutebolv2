@@ -29,7 +29,7 @@ a:focus-visible{outline:3px solid var(--lime);outline-offset:4px}
 .brand-name{font-size:17px;line-height:1.02}
 .brand-name span{color:var(--lime);font-family:"Barlow Condensed",Impact,sans-serif;font-style:italic;font-size:21px;letter-spacing:.3px}
 .navlinks{display:flex;align-items:center;gap:26px;color:#b7c0b9;font-size:13px;font-weight:600}
-.navlinks a:hover{color:var(--lime)}
+.navlinks a:hover{color:var(--lime)}.nav-dropdown{position:relative}.nav-dropdown-toggle{border:0;background:none;color:inherit;font:inherit;padding:12px 0;cursor:pointer}.nav-dropdown-toggle span{color:var(--lime);margin-left:4px}.nav-dropdown-menu{display:none;position:absolute;z-index:20;top:100%;left:-14px;min-width:220px;padding:8px;background:#111a14;border:1px solid #354633;border-radius:12px;box-shadow:0 18px 40px #0009}.nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}.nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd}.nav-dropdown-menu a:hover{background:#24351e;color:var(--lime)}.nav-dropdown-menu small{font-size:9px;color:var(--lime);margin-left:5px;font-weight:900}
 .nav-cta,.primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--lime);color:#101810;border:1px solid var(--lime);border-radius:10px;padding:12px 17px;font-weight:900;font-size:13px;transition:transform .18s ease,filter .18s ease}
 .nav-cta:hover,.primary:hover{transform:translateY(-2px);filter:brightness(1.05)}
 .hero{position:relative;padding:76px 0 58px}
@@ -82,7 +82,7 @@ h1,h2,h3,p{margin-top:0}
 .community a{white-space:nowrap;background:#101810;color:#efffdf;padding:13px 16px;border-radius:9px;font-size:12px;font-weight:900}
 .footer{border-top:1px solid #243128;padding:24px 0 34px;color:#7e8b81;font-size:11px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .footer strong{color:#eaf0ea}
-@media(max-width:760px){.wrap{width:min(100% - 28px,600px)}.nav{height:70px}.navlinks a:not(.nav-cta){display:none}.navlinks{gap:10px}.brand-name{font-size:16px}.hero{padding:54px 0 38px}.hero:after{right:-65px;top:70px;font-size:200px}.hero p{font-size:14px}.games{grid-template-columns:1fr}.game{min-height:280px}.tools{grid-template-columns:1fr}.section{padding-bottom:43px}.community{align-items:flex-start;flex-direction:column}.section-head{align-items:flex-start;flex-direction:column}.stats{gap:18px}}
+@media(max-width:760px){.wrap{width:min(100% - 28px,600px)}.nav{height:70px}.navlinks>a:not(.nav-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}.navlinks{gap:10px}.brand-name{font-size:16px}.hero{padding:54px 0 38px}.hero:after{right:-65px;top:70px;font-size:200px}.hero p{font-size:14px}.games{grid-template-columns:1fr}.game{min-height:280px}.tools{grid-template-columns:1fr}.section{padding-bottom:43px}.community{align-items:flex-start;flex-direction:column}.section-head{align-items:flex-start;flex-direction:column}.stats{gap:18px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important}}
 </style>
 <meta name="description" content="Jogue com os amigos: leilão de craques atuais e lendas com lances ao vivo e o Dado da Copa, que sorteia seleções e monta seu time para ser campeão do mundo. Grátis, direto no navegador.">
@@ -98,7 +98,7 @@ h1,h2,h3,p{margin-top:0}
 <main class="app" id="top">
 <header class="wrap nav">
 <a class="brand" href="/" aria-label="Resenha do Fut - início"><div class="brand-icon"><img class="brand-logo" src="/logo.png" alt="Logo Resenha do Fut"></div><div class="brand-name">RESENHA<br><span>DO FUT.</span></div></a>
-<nav class="navlinks" aria-label="Navegação principal"><a href="#jogos">Jogos</a><a href="/resenha-ball">Resenha Ball</a><a href="#extras">A plataforma</a><a href="#sobre">Sobre</a><a class="nav-cta" href="#jogos">Jogar agora ↗</a></nav>
+<nav class="navlinks" aria-label="Navegação principal"><a href="#jogos">Jogos</a><a href="/resenha-ball">Resenha Ball</a><div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a></div></div><a href="#extras">A plataforma</a><a href="#sobre">Sobre</a><a class="nav-cta" href="#jogos">Jogar agora ↗</a></nav>
 </header>
 <section class="wrap hero">
 <div class="eyebrow"><span class="dot"></span> Futebol é melhor na resenha</div>
@@ -122,5 +122,7 @@ h1,h2,h3,p{margin-top:0}
 <section class="wrap" id="sobre"><div class="community"><div><h2>Seu próximo clássico começa aqui.</h2><p>Escolha o jogo, convoque os amigos e deixe a resenha rolar.</p></div><a href="#jogos">BORA JOGAR ↗</a></div></section>
 <footer class="wrap footer"><span><strong>RESENHA DO FUT.</strong> — Futebol, dados e diversão.</span><span>Feito para quem nunca para de falar de futebol.</span></footer>
 </main>
-</body>
+<script>
+(()=>{const d=document.querySelector('.nav-dropdown'),b=document.querySelector('.nav-dropdown-toggle');if(!d||!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})();
+</script></body>
 </html>
