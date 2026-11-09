@@ -190,6 +190,34 @@ const server = http.createServer((q, s) => {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return s.end(JSON.stringify({ configured, url: configured ? process.env.SUPABASE_URL : null, publishableKey: configured ? process.env.SUPABASE_PUBLISHABLE_KEY : null }));
   }
+  if (pth === '/api/leilao-voice/token' && q.method === 'POST') {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    let raw = '', tooLarge = false;
+    q.on('data', chunk => { if (raw.length + chunk.length > 4096) tooLarge = true; else raw += chunk; });
+    q.on('end', async () => {
+      if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
+      let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const code = String(body.code || '').toUpperCase().trim().slice(0, 8);
+      const playerId = String(body.playerId || '').slice(0, 32);
+      const auctionRoom = rooms[code];
+      const player = auctionRoom && auctionRoom.players.find(p => p.id === playerId);
+      if (!auctionRoom || !player || !player.ws || player.ws.readyState !== 1) return sendJson(403, { error: 'Entre primeiro em uma sala online do Leilão de Futebol.' });
+      if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
+        return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
+      }
+      try {
+        const voiceRoom = 'leilao-' + code.toLowerCase();
+        const token = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, { identity: player.id, name: player.name, ttl: '10m' });
+        token.addGrant({ roomJoin: true, room: voiceRoom, canPublish: true, canSubscribe: true });
+        const participantToken = await token.toJwt();
+        return sendJson(200, { server_url: process.env.LIVEKIT_URL, participant_token: participantToken, room: voiceRoom });
+      } catch (e) {
+        console.error('Erro ao gerar token de voz do Leilão:', e.message);
+        return sendJson(500, { error: 'Não foi possível preparar a conexão de voz.' });
+      }
+    });
+    return;
+  }
   if (pth === '/api/resenha-voice/token' && q.method === 'POST') {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     let raw = '', tooLarge = false;
