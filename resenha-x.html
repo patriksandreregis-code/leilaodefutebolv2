@@ -161,7 +161,8 @@ function moveOrder(m){
  return s;
 }
 function quiescence(g,alpha,beta,ply,nodes,qDepth){
- nodes.count++;const checked=g.isCheck(),stand=evaluate(g),maximizing=g.turn()==='b';
+ nodes.count++;if(g.isCheckmate())return g.turn()==='b'?-100000+ply:100000-ply;if(g.isDraw())return 0;
+ const checked=g.isCheck(),stand=evaluate(g),maximizing=g.turn()==='b';
  if(nodes.count>nodes.limit||qDepth<=0)return stand;
  if(!checked){
   if(maximizing){if(stand>=beta)return beta;alpha=Math.max(alpha,stand);}
