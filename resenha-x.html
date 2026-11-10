@@ -69,7 +69,7 @@ body[data-chess-style="resenha"][data-stadium="maracana"] .arena:before{backgrou
 .nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
 .nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
 @media(max-width:760px){.site-header{width:calc(100% - 22px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
-</style>
+.chess-account-prompt{max-width:1180px;margin:0 auto 22px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid rgba(168,255,63,.3);border-radius:16px;background:linear-gradient(110deg,rgba(168,255,63,.10),rgba(22,34,25,.82));box-shadow:0 12px 30px rgba(0,0,0,.16)}.chess-account-copy strong{display:block;color:var(--lime,#a8ff3f);font-size:15px;font-weight:900}.chess-account-copy p{margin:5px 0 0;color:#d0d9d0;font-size:13px;line-height:1.5}.chess-account-link{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:10px;background:var(--lime,#a8ff3f);color:#142014;font-size:13px;font-weight:900;text-decoration:none}.chess-account-link:hover{filter:brightness(1.08);transform:translateY(-1px)}@media(max-width:650px){.chess-account-prompt{align-items:flex-start;flex-direction:column;padding:15px}.chess-account-link{width:100%;justify-content:center}}</style>
 </head>
 <body><div class="wrap">
 <header class="site-header">
@@ -82,6 +82,10 @@ body[data-chess-style="resenha"][data-stadium="maracana"] .arena:before{backgrou
 <a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a><div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div><a href="/conta">Minha conta</a><a class="home-cta" href="/#jogos">Jogar agora ↗</a>
 </nav></header>
 <section class="hero"><div class="eyebrow">♟ Novo jogo · Futebol + estratégia</div><h1>RESENHA <span>CHESS</span></h1><p>O tabuleiro é seu campo. Escolha seu clube, prepare sua estratégia e entre para a resenha. Comece treinando ou desafie a inteligência artificial.</p></section>
+<section class="chess-account-prompt" aria-label="Cadastro e pontuação">
+<div class="chess-account-copy"><strong>Jogue grátis, sem cadastro!</strong><p>Entre na sua conta para ganhar XP, subir de nível e ajudar seu clube a conquistar posições no ranking do Resenha Chess.</p></div>
+<a class="chess-account-link" href="/conta">Entrar ou criar conta <span aria-hidden="true">↗</span></a>
+</section>
 <section class="variant-picker" aria-label="Escolha a versão do xadrez"><span class="variant-picker-label">Escolha sua experiência</span><button type="button" class="variant-btn active" data-chess-style="classic" aria-pressed="true">♟ Chess Clássico</button><button type="button" class="variant-btn" data-chess-style="resenha" aria-pressed="false">⚽ Resenha Chess</button></section>
 <main class="layout">
 <aside class="panel controls"><h2>Escolha sua partida</h2>
