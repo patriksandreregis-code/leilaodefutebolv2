@@ -4,6 +4,7 @@ const { WebSocketServer } = require('ws');
 const { AccessToken } = require('livekit-server-sdk');
 const POOL = require('./craques.js'), copa = require('./copa.js');
 const beatball = require('./resenha-ball-server.js');
+const chessServer = require('./resenha-chess-server.js');
 let SQUADS = [];
 try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'utf8') + ';return SQUADS')(); } catch (e) { console.log('dados.js não carregado:', e.message); }
 
@@ -371,6 +372,7 @@ wss.on('connection', (ws, req) => {
   ws.on('error', e => console.error('[WS] Erro:', wsPath, e.message));
   console.log('[WS] Conexão aberta:', wsPath, req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'IP desconhecido');
   if (wsPath === '/resenha-ball-ws') return beatball.connect(ws);
+  if (wsPath === '/resenha-chess-ws') return chessServer.connect(ws);
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   ipConns[ip] = (ipConns[ip] || 0) + 1;
   ws.on('close', () => { ipConns[ip] = Math.max(0, (ipConns[ip] || 1) - 1); });
