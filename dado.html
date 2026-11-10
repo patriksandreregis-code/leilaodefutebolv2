@@ -77,6 +77,7 @@ table{width:100%;border-collapse:collapse;margin-top:.5rem;font-size:.9rem}td,th
   <div class="panel" id="pitch"></div>
 </div></div>
 <script src="/dados.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' }, ORDER = ['GK', 'DEF', 'MID', 'ATT'];
@@ -99,10 +100,10 @@ function setCfg(k, v) { cfg[k] = v; render(); }
 
 function start(daily) {
   const d = store.get('dado_daily2', null);
-  if (daily && d && d.date === today()) { G = { ...d.G, daily: true, phase: 'camp' }; G.rev = G.camp.matches.length; return render(); }
+  if (daily && d && d.date === today() && d.G.seed === today().replace(/-/g, '')) { G = { ...d.G, daily: true, phase: 'camp' }; G.rev = G.camp.matches.length; return render(); }
   const f = FORM[cfg.f];
   G = { daily, F: { GK: 1, DEF: f[0], MID: f[1], ATT: f[2] }, R: daily ? seeded(hash('dado' + today())) : Math.random,
-    seed: daily ? today() : Math.random().toString(36).slice(2, 8).toUpperCase(), deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] },
+    seed: daily ? today().replace(/-/g, '') : Math.random().toString(36).slice(2, 8).toUpperCase(), deck: [], team: { GK: [], DEF: [], MID: [], ATT: [] },
     picked: new Set(), n: 0, cur: null, rr: 3, phase: 'roll', rev: 0, show: cfg.show };
   render();
 }
@@ -189,7 +190,9 @@ function simulate() {
   const rk = store.get('dado_rank2', []); rk.push(res);
   rk.sort((a, b) => b.champ - a.champ || b.wins - a.wins || (b.gf - b.ga) - (a.gf - a.ga)); store.set('dado_rank2', rk.slice(0, 10));
   if (G.daily) store.set('dado_daily2', { date: today(), G: { F: G.F, team: G.team, seed: G.seed, camp: G.camp } });
+  G.xpStatus = 'pending';
   render();
+  submitDadoXP();
 }
 const next = () => { G.rev++; render(); }, all = () => { G.rev = G.camp.matches.length; render(); };
 
@@ -234,11 +237,53 @@ function campHtml() {
       (m.table ? `<table><tr class="mu"><th></th><th>Pts</th><th>SG</th></tr>${m.table.map((t, i) => `<tr class="${t.me ? 'me' : ''}"><td>${i + 1}º ${esc(t.name)}</td><td>${t.pts}</td><td>${t.gd > 0 ? '+' : ''}${t.gd}</td></tr>`).join('')}</table>` : '') + '</div>';
   });
   if (!fin) return h + `<p><button class="pri" onclick="next()">Próximo jogo →</button> <button onclick="all()">Mostrar tudo</button></p>`;
-  return h + `<div class="panel" style="background:#0b2036;margin-top:1rem"><div class="lbl">${r.champ ? 'Campeão do mundo 🏆' : 'Eliminado · ' + esc(r.out)}</div>
+  const xpLine = G.xpStatus === 'pending' ? '<p class="mu">Verificando sua campanha e registrando XP...</p>' : (G.xpStatus && G.xpStatus.message ? `<p class="ok">${esc(G.xpStatus.message)}</p>` : '');
+  return h + `${xpLine}<div class="panel" style="background:#0b2036;margin-top:1rem"><div class="lbl">${r.champ ? 'Campeão do mundo 🏆' : 'Eliminado · ' + esc(r.out)}</div>
     <div class="big" style="font-size:4.5rem">${r.wins}–${r.losses}</div>
     <div>${r.wins} vitórias · ${r.gf} gols pró · ${r.ga} sofridos · nota ${r.rating}</div>
     ${r.top.length ? `<div class="mu">Chuteira de ouro: ${r.top.map(([n, k]) => esc(n) + ' ' + k).join(' · ')}</div>` : ''}</div>
     <p><button class="pri" onclick="share()">Copiar resultado</button> <button onclick="G=null;render()">Jogar de novo</button></p>`;
+}
+let dadoSupabase = null;
+async function loadDadoSession() {
+  if (dadoSupabase) { const { data } = await dadoSupabase.auth.getSession(); return data.session; }
+  if (!window.supabase || !window.supabase.createClient) throw new Error('Não foi possível carregar o sistema de contas.');
+  const response = await fetch('/api/config/supabase', { cache: 'no-store' });
+  const cfgAuth = await response.json();
+  if (!cfgAuth.configured) throw new Error('O sistema de contas ainda não está configurado.');
+  dadoSupabase = window.supabase.createClient(cfgAuth.url, cfgAuth.publishableKey);
+  const { data, error } = await dadoSupabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+async function submitDadoXP() {
+  if (!G || !G.camp) return;
+  const campaign = G, lineup = ORDER.flatMap(pos => campaign.team[pos]).map(x => ({ name: x[0], pos: x[1], rating: x[2] }));
+  try {
+    const session = await loadDadoSession();
+    if (!session || !session.access_token) {
+      campaign.xpStatus = { message: 'Entre na sua conta para receber XP. Esta campanha não foi pontuada.' };
+      if (G === campaign) render();
+      return;
+    }
+    const form = Object.keys(FORM).find(k => {
+      const f = FORM[k]; return campaign.F.GK === 1 && campaign.F.DEF === f[0] && campaign.F.MID === f[1] && campaign.F.ATT === f[2];
+    });
+    const response = await fetch('/api/dado/complete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: session.access_token, mode: campaign.daily ? 'daily' : 'free', seed: campaign.seed,
+        form, style: cfg.style, diff: cfg.diff, fmt: cfg.fmt, lineup })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Não foi possível validar a campanha.');
+    if (result.awarded) campaign.xpStatus = { message: '+' + result.xp + ' XP! ' + result.used_today + '/' + result.daily_limit + ' campanhas pontuadas hoje neste modo.' };
+    else if (result.limit_reached) campaign.xpStatus = { message: 'Limite diário atingido: ' + result.daily_limit + ' campanha(s) pontuada(s) neste modo. Você pode continuar jogando normalmente.' };
+    else if (result.duplicate) campaign.xpStatus = { message: 'Esta campanha já foi contabilizada anteriormente; nenhum XP duplicado foi concedido.' };
+    else campaign.xpStatus = { message: 'Campanha validada, mas sem novo XP.' };
+  } catch (e) {
+    campaign.xpStatus = { message: e.message || 'Falha ao registrar XP.' };
+  }
+  if (G === campaign) render();
 }
 function share() {
   const r = G.camp.res, t = `Dado da Copa ${G.daily ? today() : '#' + G.seed}: ${r.champ ? 'CAMPEÃO DO MUNDO 🏆' : 'eliminado em ' + r.out} · ${r.wins} vitórias, ${r.gf}x${r.ga} em gols${r.blind ? ' (sem ver as notas!)' : ''}. Consegue ser campeão? ${location.origin}/dado`;
