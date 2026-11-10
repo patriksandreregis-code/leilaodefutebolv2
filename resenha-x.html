@@ -249,7 +249,7 @@ function connectChess(payload){
   }else if(data.type==='state'){
    roomCode=data.code;onlinePhase=data.phase;onlinePlayers=data.players||[];
    const self=onlinePlayers.find(p=>p.id===playerId);if(self){playerColor=self.color;orientation=playerColor;}
-   try{game.load(data.fen);catch(e){setOnlineStatus('Não foi possível sincronizar a posição.');return;}
+   try{if(data.pgn)game.loadPgn(data.pgn);else game.load(data.fen);}catch(e){setOnlineStatus('Não foi possível sincronizar a posição.');return;}
    selected=null;legal=[];history=[];orientation=playerColor||'w';
    const white=onlinePlayers.find(p=>p.color==='w'),black=onlinePlayers.find(p=>p.color==='b');
    const own=onlinePlayers.find(p=>p.color===playerColor),opponent=onlinePlayers.find(p=>p.color!==(playerColor||'w'));
