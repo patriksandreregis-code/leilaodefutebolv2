@@ -229,7 +229,7 @@ const server = http.createServer(async (q, s) => {
     return s.end(JSON.stringify({ configured, url: configured ? process.env.SUPABASE_URL : null, publishableKey: configured ? process.env.SUPABASE_PUBLISHABLE_KEY : null }));
   }
 
-  if ((pth === '/api/scout/start' || pth === '/api/scout/guess') && q.method === 'POST') {
+  if ((pth === '/api/scout/start' || pth === '/api/scout/guess' || pth === '/api/scout/hint') && q.method === 'POST') {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     let raw = '', tooLarge = false;
     q.on('data', chunk => { if (raw.length + chunk.length > 6000) tooLarge = true; else raw += chunk; });
@@ -278,7 +278,7 @@ const server = http.createServer(async (q, s) => {
           const playerResponse = await fetch(base + 'scout_players?select=clues,name,nationality,position,birth_year,profile&id=eq.' + challenge.player_id, { headers });
           let playerInfo = null;
           if (playerResponse.ok) playerInfo = (await playerResponse.json())[0] || null;
-          const response = { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: playerInfo ? playerInfo.clues[Math.min(session.attempts,5)] : 'A primeira pista está pronta.', loggedIn: !!user };
+          const response = { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: playerInfo ? playerInfo.clues[Math.max(0, Math.min(Math.max(session.attempts + 1, session.clues_revealed || 1), 6) - 1)] : 'A primeira pista está pronta.', clueNumber: Math.max(session.attempts + 1, session.clues_revealed || 1), cluesRevealed: Math.max(session.attempts + 1, session.clues_revealed || 1), loggedIn: !!user };
           if (session.finished && playerInfo) response.result = { finished:true, won:session.won, attempts:session.attempts, xp:session.xp_awarded, answer:playerInfo.name, nationality:playerInfo.nationality, position:playerInfo.position, birth_year:playerInfo.birth_year, profile:playerInfo.profile };
           return sendJson(200, response);
         }
@@ -286,13 +286,19 @@ const server = http.createServer(async (q, s) => {
         const sessionId = String(body.sessionId || '');
         const accessKey = String(body.accessKey || '');
         const guess = String(body.guess || '').trim().slice(0,80);
-        if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(accessKey) || !guess) return sendJson(400, { error: 'Palpite ou sessão inválida.' });
+        if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(accessKey) || (pth === '/api/scout/guess' && !guess)) return sendJson(400, { error: 'Palpite ou sessão inválida.' });
         const sessionResponse = await fetch(base + 'scout_sessions?select=id,user_id,access_token&id=eq.' + sessionId + '&access_token=eq.' + accessKey, { headers });
         if (!sessionResponse.ok) throw new Error('Não foi possível validar sua sessão.');
         const sessionRows = await sessionResponse.json();
         if (!sessionRows[0]) return sendJson(403, { error: 'Sessão inválida. Inicie o desafio novamente.' });
         if (user && sessionRows[0].user_id !== user.id) return sendJson(403, { error: 'Esta sessão não pertence à sua conta.' });
         if (!user && sessionRows[0].user_id) return sendJson(401, { error: 'Entre na conta usada para iniciar este desafio.' });
+        if (pth === '/api/scout/hint') {
+          const hintResponse = await fetch(base + 'rpc/scout_reveal_clue', { method: 'POST', headers, body: JSON.stringify({ p_session_id: sessionId, p_user_id: user ? user.id : null }) });
+          const hint = await hintResponse.json().catch(() => ({}));
+          if (!hintResponse.ok) return sendJson(400, { error: hint.message || 'Não foi possível revelar a próxima pista.' });
+          return sendJson(200, hint);
+        }
         const resultResponse = await fetch(base + 'rpc/scout_submit_guess', { method: 'POST', headers, body: JSON.stringify({ p_session_id: sessionId, p_guess: guess, p_user_id: user ? user.id : null }) });
         const result = await resultResponse.json().catch(() => ({}));
         if (!resultResponse.ok) return sendJson(400, { error: result.message || 'Não foi possível validar esse palpite.' });
