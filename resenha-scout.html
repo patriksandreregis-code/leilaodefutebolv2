@@ -20,7 +20,7 @@
 .game-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px}.date-label{font-size:12px;color:var(--muted)}.date-label strong{display:block;color:var(--text);font-size:15px}.status-pill{border:1px solid #3c5636;background:#17251a;color:var(--lime);padding:7px 11px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.5px}
 .intro{text-align:center;padding:25px 8px 16px}.intro h2{font:800 32px/1 "Barlow Condensed",sans-serif;margin:0 0 8px}.intro p{margin:0;color:var(--muted);font-size:13px}.attempts{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:18px 0 24px}.attempt{height:8px;border-radius:20px;background:#29352c;overflow:hidden}.attempt.used{background:var(--lime)}.attempt.failed{background:var(--red)}
 .clue-card{border:1px solid #344238;background:#0a100c;border-radius:15px;padding:20px;margin-bottom:18px}.clue-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.clue-head strong{font-size:11px;color:var(--lime);letter-spacing:1.2px;text-transform:uppercase}.clue-count{font-size:11px;color:var(--muted)}.clue-text{font-size:16px;font-weight:600;line-height:1.55;min-height:50px}
-.guess-form{display:flex;gap:9px}.guess-form input{min-width:0;flex:1;background:#080d0b;border:1px solid #3a493e;border-radius:11px;padding:14px;color:var(--text);outline:none}.guess-form input:focus{border-color:var(--lime);box-shadow:0 0 0 3px #a8ff3f18}.guess-form button,.restart{border:0;border-radius:11px;background:var(--lime);color:#101810;font-weight:900;padding:0 20px;cursor:pointer}.guess-form button:disabled{opacity:.45;cursor:not-allowed}
+.hint-actions{display:flex;justify-content:flex-end;margin:-7px 0 16px}.hint-button{border:1px solid #617c4e;background:#18251a;color:var(--lime);border-radius:9px;padding:9px 13px;font-size:12px;font-weight:800;cursor:pointer}.hint-button:hover{background:#243625}.hint-button:disabled{opacity:.45;cursor:not-allowed}.guess-form{display:flex;gap:9px}.guess-form input{min-width:0;flex:1;background:#080d0b;border:1px solid #3a493e;border-radius:11px;padding:14px;color:var(--text);outline:none}.guess-form input:focus{border-color:var(--lime);box-shadow:0 0 0 3px #a8ff3f18}.guess-form button,.restart{border:0;border-radius:11px;background:var(--lime);color:#101810;font-weight:900;padding:0 20px;cursor:pointer}.guess-form button:disabled{opacity:.45;cursor:not-allowed}
 .guess-list{display:grid;gap:8px;margin-top:16px}.guess-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#151e18;border:1px solid #29372d;border-radius:9px;font-size:13px}.guess-row small{color:var(--muted)}.feedback{margin-top:14px;min-height:22px;font-size:13px;color:var(--muted)}.feedback.error{color:var(--red)}.feedback.success{color:var(--lime)}
 .result{display:none;margin-top:20px;border:1px solid #49643d;background:linear-gradient(135deg,#19271a,#101713);border-radius:16px;padding:22px}.result.show{display:block}.result h3{font:900 34px/1 "Barlow Condensed",sans-serif;margin:6px 0 10px}.result .result-tag{color:var(--lime);font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase}.result p{color:#c2cbc4;margin:8px 0}.result-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.result-meta span{font-size:11px;border:1px solid #354638;border-radius:30px;padding:5px 9px;color:var(--muted)}.xp{font-weight:900;color:var(--lime)}.result-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}.restart{padding:11px 16px}.result-actions a{color:var(--lime);font-weight:800;font-size:13px}
 .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0 60px}.rule{padding:16px;border:1px solid var(--line);border-radius:13px;background:#0d140f}.rule strong{display:block;color:var(--lime);font-size:13px;margin-bottom:5px}.rule span{font-size:12px;color:var(--muted)}
@@ -50,7 +50,7 @@
 <div class="intro"><h2>SEIS CHANCES. UMA RESPOSTA.</h2><p>Errou? Uma nova pista será revelada. Acerte para somar XP na sua conta.</p></div>
 <div class="attempts" id="attemptBars"><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span></div>
 <div class="clue-card"><div class="clue-head"><strong id="clueTitle">Pista 1</strong><span class="clue-count" id="clueCount">6 tentativas disponíveis</span></div><div class="clue-text" id="clueText">...</div></div>
-<form class="guess-form" id="guessForm"><input id="guessInput" maxlength="80" autocomplete="off" placeholder="Digite o nome do jogador..." aria-label="Nome do jogador" required><button id="guessButton" type="submit">PALPITAR</button></form>
+<div class="hint-actions"><button class="hint-button" id="nextClueButton" type="button">REVELAR PRÓXIMA PISTA ↗</button></div><form class="guess-form" id="guessForm"><input id="guessInput" maxlength="80" autocomplete="off" placeholder="Digite o nome do jogador..." aria-label="Nome do jogador" required><button id="guessButton" type="submit">PALPITAR</button></form>
 <div class="feedback" id="feedback" role="status"></div>
 <div class="guess-list" id="guessList"></div>
 <div class="result" id="result"><div class="result-tag" id="resultTag">DESAFIO CONCLUÍDO</div><h3 id="answerName"></h3><div class="result-meta" id="answerMeta"></div><p id="answerProfile"></p><p id="xpText"></p><div class="result-actions"><button class="restart" id="shareButton" type="button">COMPARTILHAR RESULTADO</button><a href="/ranking">Ver ranking →</a></div></div>
@@ -66,14 +66,14 @@
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
-let db=null,session=null,gameState=null,clueNow=1,guesses=[];
+let db=null,session=null,gameState=null,clueNow=1,cluesRevealed=1,guesses=[];
 const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function datePt(iso){const [y,m,d]=iso.split('-');return d+'/'+m+'/'+y}
 function bars(){const nodes=$('attemptBars').children;for(let i=0;i<6;i++){nodes[i].className='attempt'+(i<guesses.length?(gameState?.won?' used':' failed'):'')}}
 function renderGuesses(){ $('guessList').innerHTML=guesses.map((g,i)=>'<div class="guess-row"><span>'+esc(g)+'</span><small>Tentativa '+(i+1)+'</small></div>').join(''); }
 function setFeedback(t,kind=''){ $('feedback').textContent=t;$('feedback').className='feedback '+kind; }
-function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true; }
+function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true;$('nextClueButton').disabled=true; }\nfunction updateHintButton(){const b=$('nextClueButton');b.disabled=!!gameState?.finished||cluesRevealed>=6;b.textContent=cluesRevealed>=6?'TODAS AS PISTAS REVELADAS':'REVELAR PRÓXIMA PISTA ↗';}
 function showResult(data){
  gameState={...gameState,...data};$('result').classList.add('show');$('resultTag').textContent=data.won?'CRAQUE DESCOBERTO!':'FIM DE JOGO';$('answerName').textContent=data.answer||'Jogador revelado';
  $('answerMeta').innerHTML=[data.nationality,data.position,data.birth_year?'Nascido em '+data.birth_year:null].filter(Boolean).map(x=>'<span>'+esc(x)+'</span>').join('');
@@ -89,12 +89,23 @@ async function start(){
  const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível iniciar o desafio.');
  gameState=data;localStorage.setItem('resenha-scout-session',JSON.stringify({sessionId:data.sessionId,accessKey:data.accessKey}));
  $('challengeDate').textContent=datePt(data.date);$('loginStatus').textContent=data.loggedIn?'CONTA CONECTADA':'MODO CONVIDADO';
- guesses=(data.guesses||[]).map(x=>x);clueNow=Math.min(6,Math.max(1,data.attempts+1));
+ guesses=(data.guesses||[]).map(x=>x);clueNow=Math.min(6,Math.max(1,data.clueNumber||data.attempts+1));cluesRevealed=Math.min(6,Math.max(1,data.cluesRevealed||clueNow));
  $('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=(6-data.attempts)+' tentativas disponíveis';$('clueText').textContent=data.clue||'';
  renderGuesses();bars();
  $('loading').classList.add('hidden');$('game').classList.remove('hidden');
  if(data.finished){showResult(data.result||{won:data.won,attempts:data.attempts,xp:data.xp});}
 }
+$('nextClueButton').addEventListener('click',async()=>{
+ if(!gameState||gameState.finished||cluesRevealed>=6)return;
+ const button=$('nextClueButton');button.disabled=true;button.textContent='CARREGANDO...';
+ setFeedback('Revelando a próxima pista...');
+ try{
+  const r=await fetch('/api/scout/hint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:gameState.sessionId,accessKey:gameState.accessKey,accessToken:session?.access_token||''})});
+  const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível revelar a pista.');
+  clueNow=data.clueNumber;cluesRevealed=data.cluesRevealed;$('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=data.remaining+' tentativas disponíveis';$('clueText').textContent=data.clue;
+  setFeedback('Nova pista revelada. Você ainda tem as mesmas tentativas!','success');updateHintButton();
+ }catch(err){setFeedback(err.message,'error');button.disabled=false;button.textContent='REVELAR PRÓXIMA PISTA ↗';}
+});
 $('guessForm').addEventListener('submit',async e=>{
  e.preventDefault();const guess=$('guessInput').value.trim();if(!guess||$('guessButton').disabled)return;
  $('guessButton').disabled=true;$('guessButton').textContent='...';setFeedback('Conferindo seu palpite...');
@@ -103,7 +114,7 @@ $('guessForm').addEventListener('submit',async e=>{
  const data=await r.json();if(!r.ok)throw new Error(data.error||'Palpite não validado.');
  guesses.push(guess);renderGuesses();bars();$('guessInput').value='';
  if(data.finished){showResult(data);setFeedback(data.won?'Você encontrou o craque!':'As seis tentativas acabaram. Confira quem era o jogador.',data.won?'success':'error');}
- else{clueNow=data.attempts+1;$('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=data.remaining+' tentativas disponíveis';$('clueText').textContent=data.clue;setFeedback('Não foi dessa vez. Uma nova pista foi revelada.');$('guessButton').disabled=false;}
+ else{clueNow=data.clueNumber||Math.max(cluesRevealed,data.attempts+1);cluesRevealed=Math.max(cluesRevealed,data.cluesRevealed||clueNow);$('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=data.remaining+' tentativas disponíveis';$('clueText').textContent=data.clue;setFeedback('Não foi dessa vez. Uma nova pista foi revelada.');$('guessButton').disabled=false;updateHintButton();}
  }catch(err){setFeedback(err.message,'error');$('guessButton').disabled=false;}
  $('guessButton').textContent='PALPITAR';
 });
