@@ -185,7 +185,7 @@ const cfg = (k, v) => send({ t: 'cfg', k, v });
 const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')); } catch { return null; } }, set(v) { try { v ? localStorage.setItem('leilao_s', JSON.stringify(v)) : localStorage.removeItem('leilao_s'); } catch {} } };
 
 $('room').value = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
-let token = '', lastMsg = Date.now(), retry = null, jt = null; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
+let token = '', lastMsg = Date.now(), retry = null, jt = null, authFailed = false; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
 const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; showJoining('Reconectando à sua sala…'); connect(); }
 
 function showJoining(msg) { $('join').hidden = true; $('joining').hidden = false; $('joinmsg').textContent = msg; clearTimeout(jt);
@@ -209,7 +209,7 @@ function connect() {
   if (ws && ws.readyState <= 1) return;
   clearTimeout(retry);
   const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  w.onopen = async () => { lastMsg = Date.now(); try { const session = await loadAuctionAuth(); if (!session || !session.access_token) { w.close(); showJoinForm(); alert('Sua sessão expirou. Entre novamente na sua conta.'); return; } send({ t: 'join', room, name, token, re: !!(S || saved), accessToken: session.access_token }); } catch (e) { w.close(); showJoinForm(); alert(e.message || 'Falha ao validar sua conta.'); } };
+  w.onopen = async () => { lastMsg = Date.now(); try { const session = await loadAuctionAuth(); if (!session || !session.access_token) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert('Sua sessão expirou. Entre novamente na sua conta.'); return; } send({ t: 'join', room, name, token, re: !!(S || saved), accessToken: session.access_token }); } catch (e) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert(e.message || 'Falha ao validar sua conta.'); } };
   w.onmessage = e => {
     lastMsg = Date.now();
     const m = JSON.parse(e.data);
@@ -224,7 +224,7 @@ function connect() {
   };
   w.onclose = () => { // reconecta sozinho; se nunca conectou, volta ao formulário com aviso
     if (w !== ws) return;
-    if (S || saved) retry = setTimeout(connect, 2000); else if (!jt || !S) { ws = null; showJoinForm(); alert('Não foi possível conectar ao servidor. Tente novamente em instantes.'); }
+    if (authFailed) { ws = null; showJoinForm(); } else if (S || saved) retry = setTimeout(connect, 2000); else if (!jt || !S) { ws = null; showJoinForm(); alert('Não foi possível conectar ao servidor. Tente novamente em instantes.'); }
   };
 }
 function reconnect() { const w = ws; if (w) { w.onclose = null; try { w.close(); } catch (e) {} } ws = null; clearTimeout(retry); connect(); }
