@@ -1,13 +1,43 @@
 const crypto=require('crypto');
 const rooms=new Map(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),send=(w,d)=>w&&w.readyState===1&&w.send(JSON.stringify(d));
 const code=()=>crypto.randomBytes(3).toString('hex').toUpperCase(),name=s=>String(s||'Jogador').replace(/[<>]/g,'').trim().slice(0,16)||'Jogador';
+const activeAccounts=new Map();
+async function verifyBallUser(accessToken){
+ if(!accessToken||!process.env.SUPABASE_URL||!process.env.SUPABASE_PUBLISHABLE_KEY)return null;
+ try{
+  const response=await fetch(process.env.SUPABASE_URL.replace(/\/$/,'')+'/auth/v1/user',{headers:{apikey:process.env.SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+accessToken}});
+  if(!response.ok)return null;
+  const user=await response.json();
+  return user&&user.id&&user.email_confirmed_at?user:null;
+ }catch(e){console.error('[Resenha Ball] Falha ao validar conta:',e.message);return null;}
+}
+async function awardMatchXP(r){
+ if(r.xpAwarded||!r.matchId||Date.now()-r.matchStartedAt<30000)return;
+ const players=[...r.players.values()];
+ const authenticated=players.filter(p=>p.userId&&r.matchUserIds&&r.matchUserIds.has(p.userId));
+ if(authenticated.length<2||new Set(authenticated.map(p=>p.userId)).size<2||!authenticated.some(a=>authenticated.some(b=>a.team!==b.team&&a.userId!==b.userId)))return;
+ r.xpAwarded=true;
+ const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
+ if(!secret||!process.env.SUPABASE_URL){console.warn('[Resenha Ball XP] SUPABASE_SECRET_KEY não configurada.');return;}
+ const endpoint=process.env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/award_resenha_ball_xp';
+ for(const p of authenticated){
+  const result=r.score[p.team]>r.score[1-p.team]?'win':r.score[p.team]===r.score[1-p.team]?'draw':'loss';
+  try{
+   const response=await fetch(endpoint,{method:'POST',headers:{apikey:secret,Authorization:'Bearer '+secret,'Content-Type':'application/json'},body:JSON.stringify({p_user_id:p.userId,p_match_id:r.matchId,p_result_code:result})});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw new Error('RPC HTTP '+response.status+': '+JSON.stringify(data).slice(0,250));
+   send(p.ws,{type:'xp',...data,result});
+  }catch(e){console.error('[Resenha Ball XP] Falha ao registrar para',p.userId,e.message);send(p.ws,{type:'xp',awarded:false,error:'Não foi possível registrar o XP agora.'});}
+ }
+}
 function view(r){const humans=[...r.players.values()].map(p=>({id:p.id,name:p.name,team:p.team,online:!!p.ws}));const bots=r.bots.map(p=>({id:p.id,name:p.name,team:p.team,bot:true,online:false}));return {type:'state',code:r.code,host:r.host,phase:r.phase,humanCount:humans.length,players:[...humans,...bots],score:r.score,time:r.time,duration:r.duration,ball:r.ball,stats:{scorers:[...r.goalStats.values()].sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name)),lastGoal:r.lastGoal},actors:[...r.players.values(),...r.bots].map(p=>({id:p.id,x:p.x,y:p.y}))};}
 function bc(r){const s=view(r);for(const p of r.players.values())send(p.ws,s);}
 function reset(r){r.score=[0,0];r.time=r.duration;r.goalStats=new Map();r.lastGoal=null;r.lastTouch=null;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;p.kickAt=0;}}
 function fillBots(r){r.bots=[];const counts=[0,0];for(const p of r.players.values())counts[p.team]++;const target=Math.max(2,counts[0],counts[1]);for(let team=0;team<2;team++){while(counts[team]<target){const slot=counts[team]++;r.bots.push({id:'bot-'+team+'-'+slot,name:'BOT '+(slot+1),team,x:team?740:260,y:180+slot*80,vx:0,vy:0,kickAt:0,bot:true});}}}
 function create(duration){let c=code();while(rooms.has(c))c=code();const r={code:c,host:null,phase:'lobby',players:new Map(),bots:[],score:[0,0],goalStats:new Map(),lastGoal:null,lastTouch:null,duration:[60,90,180,300].includes(+duration)?+duration:90,time:90,ball:{x:500,y:300,vx:0,vy:0},last:Date.now(),timer:null};rooms.set(c,r);return r;}
-function start(r){if(r.players.size<1)return false;fillBots(r);r.phase='playing';reset(r);r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
-function goal(r,t){r.score[t]++;const touch=r.lastTouch&&Date.now()-r.lastTouch.at<8000?r.lastTouch:null;if(touch&&touch.team===t){const old=r.goalStats.get(touch.id)||{id:touch.id,name:touch.name,team:touch.team,bot:!!touch.bot,goals:0};old.goals++;r.goalStats.set(touch.id,old);r.lastGoal={name:touch.name,team:touch.team,bot:!!touch.bot};}else r.lastGoal={name:'Gol sem autor identificado',team:t,bot:false};r.lastTouch=null;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;}if(r.phase==='golden_goal'){r.phase='finished';clearInterval(r.timer);r.timer=null;}bc(r);}
+function start(r){if(r.players.size<1)return false;fillBots(r);r.phase='playing';reset(r);r.matchId=crypto.randomBytes(16).toString('hex');r.matchStartedAt=Date.now();r.matchUserIds=new Set([...r.players.values()].filter(p=>p.userId).map(p=>p.userId));r.xpAwarded=false;r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
+function finish(r){if(r.phase==='finished')return;r.phase='finished';clearInterval(r.timer);r.timer=null;bc(r);awardMatchXP(r).catch(e=>console.error('[Resenha Ball XP]',e));}
+function goal(r,t){r.score[t]++;const touch=r.lastTouch&&Date.now()-r.lastTouch.at<8000?r.lastTouch:null;if(touch&&touch.team===t){const old=r.goalStats.get(touch.id)||{id:touch.id,name:touch.name,team:touch.team,bot:!!touch.bot,goals:0};old.goals++;r.goalStats.set(touch.id,old);r.lastGoal={name:touch.name,team:touch.team,bot:!!touch.bot};}else r.lastGoal={name:'Gol sem autor identificado',team:t,bot:false};r.lastTouch=null;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;}if(r.phase==='golden_goal')finish(r);bc(r);}
 function tick(r){if(r.phase!=='playing'&&r.phase!=='golden_goal')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;if(r.phase==='playing')r.time=Math.max(0,r.time-dt);const b=r.ball;
 const all=[...r.players.values(),...r.bots];
 for(const p of all){
@@ -37,30 +67,32 @@ for(const p of all){
   p.kickAt=now;b.vx+=nx*(p.bot?430:520)+p.vx*.5;b.vy+=ny*(p.bot?430:520)+p.vy*.5;
  }
 }
-const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.phase==='playing'&&r.time<=0){if(r.score[0]===r.score[1])r.phase='golden_goal';else{r.phase='finished';clearInterval(r.timer);r.timer=null;}}bc(r);}
+const previousX=b.x;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=Math.pow(.985,dt*60);b.vy*=Math.pow(.985,dt*60);if(b.y<27||b.y>573){b.y=clamp(b.y,27,573);b.vy*=-.82;}const inGoalMouth=b.y>=252&&b.y<=348;if(previousX>12&&b.x<=12&&inGoalMouth)return goal(r,1);if(previousX<988&&b.x>=988&&inGoalMouth)return goal(r,0);if(b.x<12){b.x=12;b.vx=Math.abs(b.vx)*.8;}else if(b.x>988){b.x=988;b.vx=-Math.abs(b.vx)*.8;}if(r.phase==='playing'&&r.time<=0){if(r.score[0]===r.score[1])r.phase='golden_goal';else{finish(r);return;}}bc(r);}
 function connect(ws){
 let r=null,p=null;
 const err=t=>send(ws,{type:'error',message:t});
 console.log('[Resenha Ball] Cliente conectado');
 ws.on('error',e=>console.error('[Resenha Ball] Erro no socket:',e.message));
-ws.on('message',raw=>{let m;try{m=JSON.parse(raw);}catch(e){console.warn('[Resenha Ball] Mensagem JSON inválida:',e.message);return;}
+ws.on('message',async raw=>{let m;try{m=JSON.parse(raw);}catch(e){console.warn('[Resenha Ball] Mensagem JSON inválida:',e.message);return;}
 if(m.type==='create'||m.type==='join'){
 if(r)return err('Você já está em uma sala.');
+const authUser=await verifyBallUser(String(m.accessToken||''));
+if(authUser){const existing=activeAccounts.get(authUser.id);if(existing&&existing.ws&&existing.ws.readyState===1)return err('Esta conta já está conectada a outra partida.');}
 const requestedCode=String(m.code||'').toUpperCase();
 r=m.type==='create'?create(m.duration):rooms.get(requestedCode);
 if(!r){console.warn('[Resenha Ball] Sala não encontrada:',requestedCode);return err('Sala não encontrada.');}
 if(r.phase!=='lobby')return err('A partida já começou.');
 if(r.players.size>=8)return err('Sala cheia. Máximo de 8 jogadores.');
 const id=crypto.randomBytes(5).toString('hex'),a=[...r.players.values()].filter(x=>x.team===0).length,b=[...r.players.values()].filter(x=>x.team===1).length;
-p={id,name:name(m.name),team:a<=b?0:1,ws,x:260,y:300,vx:0,vy:0,input:{x:0,y:0,kick:false},kickAt:0};
-r.players.set(id,p);if(!r.host)r.host=id;
+p={id,name:name(m.name),team:a<=b?0:1,ws,userId:authUser?authUser.id:null,x:260,y:300,vx:0,vy:0,input:{x:0,y:0,kick:false},kickAt:0};
+r.players.set(id,p);if(p.userId)activeAccounts.set(p.userId,p);if(!r.host)r.host=id;
 console.log('[Resenha Ball] Jogador entrou:',{room:r.code,player:p.name,id:p.id,players:r.players.size});
 send(ws,{type:'joined',code:r.code,id,host:r.host===id});bc(r);return;}
 if(!r||!p)return;if(m.type==='team'&&r.phase==='lobby'){const team=Number(m.team);if(team!==0&&team!==1)return;const occupied=[...r.players.values()].filter(x=>x.id!==p.id&&x.team===team).length;if(occupied>=4)return err('Essa equipe já está completa. Escolha a outra equipe.');p.team=team;bc(r);}else if(m.type==='input'&&r.phase==='playing')p.input={x:clamp(+m.x||0,-1,1),y:clamp(+m.y||0,-1,1),kick:!!m.kick};else if(m.type==='start'&&p.id===r.host){if(!start(r))err('São necessários pelo menos 2 jogadores.');}else if(m.type==='back'&&p.id===r.host){clearInterval(r.timer);r.timer=null;r.phase='lobby';r.bots=[];bc(r);}});
 ws.on('close',(code,reason)=>{
 console.warn('[Resenha Ball] Socket fechado:',{code,reason:reason&&reason.toString(),room:r&&r.code,player:p&&p.name,id:p&&p.id,readyState:ws.readyState});
 if(!r||!p)return;
-r.players.delete(p.id);
+r.players.delete(p.id);if(p.userId&&activeAccounts.get(p.userId)===p)activeAccounts.delete(p.userId);
 if(!r.players.size){clearInterval(r.timer);rooms.delete(r.code);return;}
 if(r.host===p.id)r.host=r.players.keys().next().value;
 bc(r);
