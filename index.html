@@ -116,7 +116,9 @@ h1,h2,h3,p{margin-top:0}
 <div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu">
 <a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-x">Resenha Chess</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
 </div></div>
-<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a><div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div><a href="/conta">Minha conta</a><a class="home-cta" href="/#jogos">Jogar agora ↗</a>
+<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div>
+<a class="home-cta" data-account-link href="/conta">Criar conta</a>
 </nav></header>
 <section class="wrap hero">
 <div class="eyebrow"><span class="dot"></span> Futebol é melhor na resenha</div>
@@ -141,5 +143,6 @@ h1,h2,h3,p{margin-top:0}
 <section class="wrap" id="sobre"><div class="community"><div><h2>Seu próximo clássico começa aqui.</h2><p>Escolha o jogo, convoque os amigos e deixe a resenha rolar.</p></div><a href="#jogos">BORA JOGAR ↗</a></div></section>
 <footer class="wrap footer"><span><strong>RESENHA DO FUT.</strong> — Futebol, dados e diversão.</span><span>Feito para quem nunca para de falar de futebol.</span></footer>
 </main>
-<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script></body>
+<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script><script src="/nav.js" defer></script>
+</body>
 </html>
