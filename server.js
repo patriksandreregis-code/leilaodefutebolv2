@@ -381,7 +381,6 @@ wss.on('connection', (ws, req) => {
     let m; try { m = JSON.parse(d); } catch { return; }
     if (m.t === 'join') {
       const authUser = await verifyAuctionUser(String(m.accessToken || ''));
-      if (!authUser) return err('Para jogar o Leilão valendo XP, entre na sua conta do Resenha do Fut com e-mail confirmado.');
       const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
       if (!code || !name) return err('Informe seu nome e o código da sala.');
       if (!NAME_RE.test(name)) return err('Nome inválido: use de 2 a 16 letras, números ou espaços.');
@@ -393,8 +392,8 @@ wss.on('connection', (ws, req) => {
       }
       r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, torneio: null, unsold: [], round: 1, warned: {}, banned: [], cfg: { ...DEFAULT_CFG } });
       if (r.banned.includes(name)) { r = null; return err('Você foi removido desta sala.'); }
-      p = r.players.find(x => x.supabaseUserId === authUser.id);
-      const sameName = r.players.find(x => x.name.toLowerCase() === name.toLowerCase() && x.supabaseUserId !== authUser.id);
+      p = authUser ? r.players.find(x => x.supabaseUserId === authUser.id) : r.players.find(x => !x.supabaseUserId && x.token && m.token === x.token);
+      const sameName = r.players.find(x => x.name.toLowerCase() === name.toLowerCase() && (authUser ? x.supabaseUserId !== authUser.id : x.token !== m.token));
       if (sameName) return err('Esse apelido já está sendo usado por outra conta nesta sala. Escolha outro.');
       if (p) {
         if (p.token && m.token !== p.token && p.ws && p.ws.readyState === 1) return err('Esta conta já está conectada à sala em outra janela.');
@@ -402,7 +401,7 @@ wss.on('connection', (ws, req) => {
         const old = p.ws; p.ws = ws; if (old && old !== ws) { try { old.close(); } catch (e) {} }
       }
       else if (r.phase !== 'lobby' || r.players.length >= MAX_PLAYERS) { r = null; return err('Sala em andamento ou cheia.'); }
-      else { p = { id: Math.random().toString(36).slice(2, 8), name, token: newToken(), supabaseUserId: authUser.id, hasValidBid: false, ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
+      else { p = { id: Math.random().toString(36).slice(2, 8), name, token: newToken(), supabaseUserId: authUser ? authUser.id : null, hasValidBid: false, ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
       if (!r.host || !r.players.some(x => x.id === r.host)) r.host = p.id;
       bc(r);
     } else if (!r || !p) return;
@@ -419,7 +418,7 @@ wss.on('connection', (ws, req) => {
       }
       bc(r);
     } else if (m.t === 'start' && p.id === r.host && r.phase === 'lobby') {
-      if (r.players.length < 2 || new Set(r.players.map(x => x.supabaseUserId).filter(Boolean)).size < 2) return err('O leilão valendo XP precisa de pelo menos dois jogadores autenticados em contas diferentes.');
+      if (r.players.length < 2) return err('São necessários pelo menos dois jogadores para iniciar o leilão.');
       const sl = slotsOf(r), eras = PACKS.filter(k => r.cfg.packs.includes(k.id)).map(k => k.era), pool0 = POOL.filter(x => eras.includes(x[3])),
         bNames = new Set(pool0.filter(x => x[3] === 'B').map(x => x[0])), pool = pool0.filter(x => x[3] === 'B' || !bNames.has(x[0])); // mesma pessoa em dois pacotes: vale a versão do Brasileirão
       for (const pos of Object.keys(sl)) {
