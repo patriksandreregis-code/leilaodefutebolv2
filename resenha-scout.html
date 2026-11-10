@@ -84,10 +84,10 @@ async function auth(){
  try{const r=await fetch('/api/config/supabase',{cache:'no-store'}),c=await r.json();if(c.configured&&window.supabase){db=window.supabase.createClient(c.url,c.publishableKey);const {data}=await db.auth.getSession();session=data.session;db.auth.onAuthStateChange((_e,s)=>{session=s});}}catch(e){console.warn('Scout auth:',e)}
 }
 async function start(){
- const payload={};if(session?.access_token)payload.accessToken=session.access_token;
+ const payload={};if(session?.access_token)payload.accessToken=session.access_token;try{const saved=JSON.parse(localStorage.getItem('resenha-scout-session')||'null');if(saved){payload.sessionId=saved.sessionId;payload.accessKey=saved.accessKey;}}catch(e){}
  const r=await fetch('/api/scout/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
  const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível iniciar o desafio.');
- gameState=data;localStorage.setItem('scout-session-'+data.date,JSON.stringify({sessionId:data.sessionId,accessKey:data.accessKey}));
+ gameState=data;localStorage.setItem('resenha-scout-session',JSON.stringify({sessionId:data.sessionId,accessKey:data.accessKey}));
  $('challengeDate').textContent=datePt(data.date);$('loginStatus').textContent=data.loggedIn?'CONTA CONECTADA':'MODO CONVIDADO';
  guesses=(data.guesses||[]).map(x=>x);clueNow=Math.min(6,Math.max(1,data.attempts+1));
  $('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=(6-data.attempts)+' tentativas disponíveis';$('clueText').textContent=data.clue||'';
