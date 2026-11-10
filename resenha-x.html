@@ -69,11 +69,11 @@ function render(){
  }));
  const moves=game.history();$('history').textContent=moves.length?moves.reduce((s,m,i)=>s+(i%2===0?Math.floor(i/2)+1+'. ':'')+m+' ', ''):'Movimentos aparecerão aqui.';
  $('lastMoves').textContent=moves.length?moves.slice(-4).join(' · '):'A partida ainda não começou.';
- $('status').textContent=game.isCheckmate()?'XEQUE-MATE! '+(game.turn()==='w'?'Pretas':'Brancas')+' venceram.':game.isDraw()?'Partida empatada.':game.isCheck()?'Xeque! '+(game.turn()==='w'?'Brancas':'Pretas')+' precisam se defender.':thinking?'O bot está pensando…':game.turn()==='w'?'Sua vez — brancas.':'Vez do bot — pretas.';
+ $('status').textContent=mode==='online'?'Modo online em desenvolvimento — as salas multiplayer chegam em uma próxima etapa.':game.isCheckmate()?'XEQUE-MATE! '+(game.turn()==='w'?'Pretas':'Brancas')+' venceram.':game.isDraw()?'Partida empatada.':game.isCheck()?'Xeque! '+(game.turn()==='w'?'Brancas':'Pretas')+' precisam se defender.':thinking?'O bot está pensando…':game.turn()==='w'?'Sua vez — brancas.':mode==='training'?'Vez do bot — pretas.':'Vez do bot — pretas.';
  $('undo').disabled=history.length===0||thinking;
 }
 function clickSquare(sq){
- if(thinking||game.isGameOver()||(mode==='bot'&&game.turn()==='b'))return;
+ if(thinking||mode==='online'||game.isGameOver()||(mode==='bot'&&game.turn()==='b'))return;
  if(selected&&legal.some(m=>m.from===selected&&m.to===sq)){
   const piece=game.get(selected),move=game.move({from:selected,to:sq,promotion:piece.type==='p'&&(sq.endsWith('8')||sq.endsWith('1'))?'q':undefined});
   if(move){history.push(game.fen());selected=null;legal=[];render();afterHumanMove();}return;
