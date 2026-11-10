@@ -80,7 +80,7 @@ const glyph={wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',bk:'♚',bq:'
 const values={p:100,n:320,b:330,r:500,q:900,k:20000};
 const files='abcdefgh', ranks='87654321';
 let game=new ChessCtor(),selected=null,legal=[],orientation='w',mode='bot',thinking=false,history=[],lessonStep=0;
-let chessSocket=null,roomCode='',reconnectToken='',playerColor=null,onlinePhase='idle',onlinePlayers=[];
+let chessSocket=null,roomCode='',reconnectToken='',playerId='',playerColor=null,onlinePhase='idle',onlinePlayers=[];
 let onlineStatus='Crie uma sala ou entre usando um código.';
 const $=id=>document.getElementById(id);
 const clubCode=name=>name.split(/\s+/).map(x=>x[0]).join('').slice(0,3).toUpperCase();
@@ -239,7 +239,7 @@ function connectChess(payload){
  ws.addEventListener('message',event=>{
   if(chessSocket!==ws)return;let data;try{data=JSON.parse(event.data);}catch(e){return;}
   if(data.type==='joined'||data.type==='reconnected'){
-   roomCode=data.code;playerColor=data.color;reconnectToken=data.reconnectToken;orientation=playerColor;
+   roomCode=data.code;playerId=data.playerId||playerId;playerColor=data.color;reconnectToken=data.reconnectToken;orientation=playerColor;
    try{localStorage.setItem('resenhaChessRoom',roomCode);localStorage.setItem('resenhaChessReconnect',reconnectToken);}catch(e){}
    $('roomCodeInput').value=roomCode;$('copyRoom').disabled=false;$('leaveRoom').disabled=false;
    setOnlineStatus('Conectado à sala '+roomCode+'. Você joga com as '+(playerColor==='w'?'brancas':'pretas')+'.');
@@ -248,7 +248,8 @@ function connectChess(payload){
    setOnlineStatus('Sala '+roomCode+' criada. Envie o código ao seu adversário.');
   }else if(data.type==='state'){
    roomCode=data.code;onlinePhase=data.phase;onlinePlayers=data.players||[];
-   try{game.load(data.fen);}catch(e){setOnlineStatus('Não foi possível sincronizar a posição.');return;}
+   const self=onlinePlayers.find(p=>p.id===playerId);if(self){playerColor=self.color;orientation=playerColor;}
+   try{game.load(data.fen);catch(e){setOnlineStatus('Não foi possível sincronizar a posição.');return;}
    selected=null;legal=[];history=[];orientation=playerColor||'w';
    const white=onlinePlayers.find(p=>p.color==='w'),black=onlinePlayers.find(p=>p.color==='b');
    const own=onlinePlayers.find(p=>p.color===playerColor),opponent=onlinePlayers.find(p=>p.color!==(playerColor||'w'));
