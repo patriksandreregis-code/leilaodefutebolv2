@@ -207,6 +207,7 @@ function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) se
 function leave() { leaveAuctionVoice(); store.set(null); location.href = '/leilao'; }
 function connect() {
   if (ws && ws.readyState <= 1) return;
+  authFailed = false;
   clearTimeout(retry);
   const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   w.onopen = async () => { lastMsg = Date.now(); try { const session = await loadAuctionAuth(); if (!session || !session.access_token) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert('Sua sessão expirou. Entre novamente na sua conta.'); return; } send({ t: 'join', room, name, token, re: !!(S || saved), accessToken: session.access_token }); } catch (e) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert(e.message || 'Falha ao validar sua conta.'); } };
