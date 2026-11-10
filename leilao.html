@@ -99,9 +99,11 @@ details{margin:.3rem 0}summary{cursor:pointer}
 <nav class="site-nav" aria-label="Navegação principal">
 <a href="/#jogos">Jogos</a>
 <div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu">
-<a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
+<a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-x">Resenha Chess</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
 </div></div>
-<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a><div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div><a href="/conta">Minha conta</a><a class="home-cta" href="/#jogos">Jogar agora ↗</a>
+<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div>
+<a class="home-cta" data-account-link href="/conta">Criar conta</a>
 </nav></header>
 <div id="join" class="panel">
   <a href="/">← Voltar ao menu</a>
@@ -415,5 +417,6 @@ voiceEl('auctionVoiceJoin').addEventListener('click',joinAuctionVoice);
 voiceEl('auctionVoiceMic').addEventListener('click',async()=>{if(!auctionVoiceRoom)return;try{auctionVoiceMicOn=!auctionVoiceMicOn;await auctionVoiceRoom.localParticipant.setMicrophoneEnabled(auctionVoiceMicOn);auctionVoiceUi();}catch(e){auctionVoiceMicOn=false;auctionVoiceUi();voiceEl('auctionVoiceStatus').textContent='Não foi possível acessar o microfone.';}});
 voiceEl('auctionVoiceOutput').addEventListener('click',()=>{auctionVoiceOutputMuted=!auctionVoiceOutputMuted;document.querySelectorAll('audio[data-leilao-voice="1"]').forEach(a=>a.muted=auctionVoiceOutputMuted);auctionVoiceUi();});
 window.addEventListener('pagehide',()=>{if(auctionVoiceRoom)auctionVoiceRoom.disconnect();});
-</script></body>
+</script><script src="/nav.js" defer></script>
+</body>
 </html>
