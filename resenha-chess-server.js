@@ -64,7 +64,8 @@ async function connect(ws) {
     if (m.type === 'reconnect') {
       const code = String(m.code || '').toUpperCase().slice(0, 6), room = rooms.get(code);
       const p = room && room.players.find(x => x.reconnectToken === String(m.reconnectToken || ''));
-      if (!p || p.ws) return fail('Não foi possível recuperar a conexão. Crie ou entre em uma sala novamente.');
+      if (!p) return fail('Não foi possível recuperar a conexão. Crie ou entre em uma sala novamente.');
+      if (p.ws) { playerRooms.delete(p.ws); try { p.ws.close(4001, 'Sessão reconectada em outro dispositivo'); } catch (_) {} }
       p.ws = ws; p.disconnectedAt = null; clearTimeout(room.expiry); playerRooms.set(ws, { room, player: p });
       send(ws, { type: 'reconnected', code, color: p.color, reconnectToken: p.reconnectToken, name: p.name }); broadcast(room); return;
     }
