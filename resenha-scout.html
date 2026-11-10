@@ -73,7 +73,8 @@ function datePt(iso){const [y,m,d]=iso.split('-');return d+'/'+m+'/'+y}
 function bars(){const nodes=$('attemptBars').children;for(let i=0;i<6;i++){nodes[i].className='attempt'+(i<guesses.length?(gameState?.won?' used':' failed'):'')}}
 function renderGuesses(){ $('guessList').innerHTML=guesses.map((g,i)=>{const hint=g==='__HINT__';return '<div class="guess-row"><span>'+(hint?'PRÓXIMA PISTA':esc(g))+'</span><small>'+(hint?'Pista solicitada':'Tentativa '+(i+1))+'</small></div>';}).join(''); }
 function setFeedback(t,kind=''){ $('feedback').textContent=t;$('feedback').className='feedback '+kind; }
-function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true;$('nextClueButton').disabled=true; }\nfunction updateHintButton(){const b=$('nextClueButton');b.disabled=!!gameState?.finished||cluesRevealed>=6;b.textContent=cluesRevealed>=6?'TODAS AS PISTAS REVELADAS':'REVELAR PRÓXIMA PISTA ↗';}
+function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true;$('nextClueButton').disabled=true; }
+function updateHintButton(){const b=$('nextClueButton');b.disabled=!!gameState?.finished||cluesRevealed>=6;b.textContent=cluesRevealed>=6?'TODAS AS PISTAS REVELADAS':'REVELAR PRÓXIMA PISTA ↗';}
 function showResult(data){
  gameState={...gameState,...data};$('result').classList.add('show');$('resultTag').textContent=data.won?'CRAQUE DESCOBERTO!':'FIM DE JOGO';$('answerName').textContent=data.answer||'Jogador revelado';
  $('answerMeta').innerHTML=[data.nationality,data.position,data.birth_year?'Nascido em '+data.birth_year:null].filter(Boolean).map(x=>'<span>'+esc(x)+'</span>').join('');
@@ -102,8 +103,10 @@ $('nextClueButton').addEventListener('click',async()=>{
  try{
   const r=await fetch('/api/scout/hint',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:gameState.sessionId,accessKey:gameState.accessKey,accessToken:session?.access_token||''})});
   const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível revelar a pista.');
+  guesses.push('__HINT__');renderGuesses();bars();gameState.attempts=data.attempts;gameState.finished=!!data.finished;
+  if(data.finished){showResult(data);setFeedback('Suas seis tentativas foram utilizadas. Confira quem era o jogador.','error');return;}
   clueNow=data.clueNumber;cluesRevealed=data.cluesRevealed;$('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=data.remaining+' tentativas disponíveis';$('clueText').textContent=data.clue;
-  setFeedback('Nova pista revelada. Você ainda tem as mesmas tentativas!','success');updateHintButton();
+  setFeedback('Nova pista revelada. Uma tentativa foi consumida.');updateHintButton();
  }catch(err){setFeedback(err.message,'error');button.disabled=false;button.textContent='REVELAR PRÓXIMA PISTA ↗';}
 });
 $('guessForm').addEventListener('submit',async e=>{
