@@ -265,16 +265,22 @@ const server = http.createServer(async (q, s) => {
             const existing = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded&user_id=eq.' + user.id + '&challenge_date=eq.' + date + '&limit=1', { headers });
             const rows = await existing.json();
             session = rows[0] || null;
+          } else if (body.sessionId && body.accessKey) {
+            const guestExisting = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded&user_id=is.null&id=eq.' + encodeURIComponent(String(body.sessionId)) + '&access_token=eq.' + encodeURIComponent(String(body.accessKey)) + '&challenge_date=eq.' + date, { headers });
+            const guestRows = await guestExisting.json();
+            session = guestRows[0] || null;
           }
           if (!session) {
             const created = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded', { method: 'POST', headers: { ...headers, Prefer: 'return=representation' }, body: JSON.stringify({ challenge_date: date, player_id: challenge.player_id, user_id: user ? user.id : null }) });
             if (!created.ok) throw new Error('Não foi possível iniciar a sessão: ' + (await created.text()).slice(0,200));
             session = (await created.json())[0];
           }
-          const playerResponse = await fetch(base + 'scout_players?select=clues&id=eq.' + challenge.player_id, { headers });
-          let firstClue = 'A primeira pista está pronta.';
-          if (playerResponse.ok) { const playerRows = await playerResponse.json(); if (playerRows[0]) firstClue = playerRows[0].clues[0]; }
-          return sendJson(200, { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: firstClue, loggedIn: !!user });
+          const playerResponse = await fetch(base + 'scout_players?select=clues,name,nationality,position,birth_year,profile&id=eq.' + challenge.player_id, { headers });
+          let playerInfo = null;
+          if (playerResponse.ok) playerInfo = (await playerResponse.json())[0] || null;
+          const response = { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: playerInfo ? playerInfo.clues[Math.min(session.attempts,5)] : 'A primeira pista está pronta.', loggedIn: !!user };
+          if (session.finished && playerInfo) response.result = { finished:true, won:session.won, attempts:session.attempts, xp:session.xp_awarded, answer:playerInfo.name, nationality:playerInfo.nationality, position:playerInfo.position, birth_year:playerInfo.birth_year, profile:playerInfo.profile };
+          return sendJson(200, response);
         }
 
         const sessionId = String(body.sessionId || '');
