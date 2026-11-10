@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d0b">
+<title>Resenha Scout | Descubra o jogador do dia</title>
+<meta name="description" content="Um jogador misterioso, seis tentativas e pistas progressivas. Descubra o craque do desafio diário no Resenha Scout.">
+<link rel="canonical" href="{{SITE}}/jogos/resenha-scout">
+<link rel="icon" href="/favicon-32x32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#080d0b;--panel:#101713;--line:#29372d;--text:#f4f6f4;--muted:#a6b0a8;--lime:#a8ff3f;--red:#ff7373;--gold:#ffd166}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 80% -5%,rgba(168,255,63,.13),transparent 34%),var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,sans-serif}a{color:inherit;text-decoration:none}button,input{font:inherit}
+.site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b;position:relative;z-index:30}
+.site-brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.6px}.site-brand-icon{width:52px;height:56px;object-fit:contain}.site-brand-name{font-size:17px;line-height:1.02}.site-brand-name span{display:block;color:var(--lime);font:italic 900 21px "Barlow Condensed",Impact,sans-serif}
+.site-nav{display:flex;align-items:center;gap:clamp(10px,1.6vw,20px);font-size:12px;font-weight:700;color:var(--muted)}.site-nav>a{white-space:nowrap}.site-nav>a:hover,.nav-dropdown-toggle:hover{color:var(--lime)}.nav-dropdown{position:relative}.nav-dropdown-toggle{border:0;background:none;color:inherit;font:inherit;padding:12px 0;cursor:pointer;white-space:nowrap}.nav-dropdown-toggle span{color:var(--lime);margin-left:4px}.nav-dropdown-menu{display:none;position:absolute;z-index:40;top:100%;left:-14px;min-width:220px;padding:8px;background:#111a14;border:1px solid #354633;border-radius:12px;box-shadow:0 18px 40px #0009}.nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}.nav-dropdown-menu a{padding:9px 10px;border-radius:7px}.nav-dropdown-menu a:hover{background:#202d22;color:var(--lime)}.nav-dropdown-menu small{color:var(--lime);font-size:9px;margin-left:6px}.home-cta{background:var(--lime);color:#101810;padding:10px 14px;border-radius:9px}
+.wrap{width:min(900px,calc(100% - 36px));margin:auto}.hero{text-align:center;padding:48px 0 26px}.eyebrow,.kicker{color:var(--lime);font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase}.hero h1{font:900 clamp(48px,8vw,76px)/.92 "Barlow Condensed",Impact,sans-serif;letter-spacing:-1px;margin:12px 0}.hero h1 span{color:var(--lime)}.hero p{max-width:620px;margin:14px auto;color:var(--muted);font-size:15px}
+.game-shell{max-width:720px;margin:0 auto 60px;background:linear-gradient(145deg,#131c16,#0d130f);border:1px solid #2b3a2e;border-radius:22px;padding:clamp(18px,4vw,30px);box-shadow:0 24px 70px #0005}
+.game-top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px}.date-label{font-size:12px;color:var(--muted)}.date-label strong{display:block;color:var(--text);font-size:15px}.status-pill{border:1px solid #3c5636;background:#17251a;color:var(--lime);padding:7px 11px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.5px}
+.intro{text-align:center;padding:25px 8px 16px}.intro h2{font:800 32px/1 "Barlow Condensed",sans-serif;margin:0 0 8px}.intro p{margin:0;color:var(--muted);font-size:13px}.attempts{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:18px 0 24px}.attempt{height:8px;border-radius:20px;background:#29352c;overflow:hidden}.attempt.used{background:var(--lime)}.attempt.failed{background:var(--red)}
+.clue-card{border:1px solid #344238;background:#0a100c;border-radius:15px;padding:20px;margin-bottom:18px}.clue-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.clue-head strong{font-size:11px;color:var(--lime);letter-spacing:1.2px;text-transform:uppercase}.clue-count{font-size:11px;color:var(--muted)}.clue-text{font-size:16px;font-weight:600;line-height:1.55;min-height:50px}
+.guess-form{display:flex;gap:9px}.guess-form input{min-width:0;flex:1;background:#080d0b;border:1px solid #3a493e;border-radius:11px;padding:14px;color:var(--text);outline:none}.guess-form input:focus{border-color:var(--lime);box-shadow:0 0 0 3px #a8ff3f18}.guess-form button,.restart{border:0;border-radius:11px;background:var(--lime);color:#101810;font-weight:900;padding:0 20px;cursor:pointer}.guess-form button:disabled{opacity:.45;cursor:not-allowed}
+.guess-list{display:grid;gap:8px;margin-top:16px}.guess-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#151e18;border:1px solid #29372d;border-radius:9px;font-size:13px}.guess-row small{color:var(--muted)}.feedback{margin-top:14px;min-height:22px;font-size:13px;color:var(--muted)}.feedback.error{color:var(--red)}.feedback.success{color:var(--lime)}
+.result{display:none;margin-top:20px;border:1px solid #49643d;background:linear-gradient(135deg,#19271a,#101713);border-radius:16px;padding:22px}.result.show{display:block}.result h3{font:900 34px/1 "Barlow Condensed",sans-serif;margin:6px 0 10px}.result .result-tag{color:var(--lime);font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase}.result p{color:#c2cbc4;margin:8px 0}.result-meta{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.result-meta span{font-size:11px;border:1px solid #354638;border-radius:30px;padding:5px 9px;color:var(--muted)}.xp{font-weight:900;color:var(--lime)}.result-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}.restart{padding:11px 16px}.result-actions a{color:var(--lime);font-weight:800;font-size:13px}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0 60px}.rule{padding:16px;border:1px solid var(--line);border-radius:13px;background:#0d140f}.rule strong{display:block;color:var(--lime);font-size:13px;margin-bottom:5px}.rule span{font-size:12px;color:var(--muted)}
+.loading{text-align:center;color:var(--muted);padding:34px}.hidden{display:none!important}
+@media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}.hero{padding:36px 0 22px}.hero h1{font-size:58px}.rules{grid-template-columns:1fr}.game-shell{border-radius:16px}.guess-form button{padding:0 13px}.clue-text{font-size:14px}}
+</style>
+</head>
+<body>
+<header class="site-header">
+<a class="site-brand" href="/"><img class="site-brand-icon" src="/logo.png" alt=""><span class="site-brand-name">RESENHA <span>DO FUT</span></span></a>
+<nav class="site-nav" aria-label="Navegação principal">
+<a href="/#jogos">Jogos</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span>⌄</span></button><div class="nav-dropdown-menu">
+<a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-x">Resenha Chess</a><a href="/jogos/resenha-scout">Resenha Scout</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
+</div></div>
+<a href="/plataforma">A plataforma</a><a href="/sobre">Sobre</a>
+<div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Ranking <span>⌄</span></button><div class="nav-dropdown-menu"><a href="/ranking">Ver ranking</a><a href="/ranking/como-funciona">Como funciona</a></div></div>
+<a class="home-cta" data-account-link href="/conta">Criar conta</a>
+</nav>
+</header>
+<main class="wrap">
+<section class="hero"><div class="eyebrow">DESAFIO DIÁRIO · FUTEBOL SEM ÉPOCA</div><h1>QUEM É O <span>CRAQUE?</span></h1><p>Uma lenda ou um craque da atualidade está escondido nas pistas. Use seu conhecimento de futebol e descubra quem é em até seis tentativas.</p></section>
+<section class="game-shell" aria-live="polite">
+<div class="game-top"><div class="date-label">DESAFIO DE HOJE<strong id="challengeDate">Carregando...</strong></div><div class="status-pill" id="loginStatus">MODO CONVIDADO</div></div>
+<div id="loading" class="loading">Preparando o desafio de hoje...</div>
+<div id="game" class="hidden">
+<div class="intro"><h2>SEIS CHANCES. UMA RESPOSTA.</h2><p>Errou? Uma nova pista será revelada. Acerte para somar XP na sua conta.</p></div>
+<div class="attempts" id="attemptBars"><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span></div>
+<div class="clue-card"><div class="clue-head"><strong id="clueTitle">Pista 1</strong><span class="clue-count" id="clueCount">6 tentativas disponíveis</span></div><div class="clue-text" id="clueText">...</div></div>
+<form class="guess-form" id="guessForm"><input id="guessInput" maxlength="80" autocomplete="off" placeholder="Digite o nome do jogador..." aria-label="Nome do jogador" required><button id="guessButton" type="submit">PALPITAR</button></form>
+<div class="feedback" id="feedback" role="status"></div>
+<div class="guess-list" id="guessList"></div>
+<div class="result" id="result"><div class="result-tag" id="resultTag">DESAFIO CONCLUÍDO</div><h3 id="answerName"></h3><div class="result-meta" id="answerMeta"></div><p id="answerProfile"></p><p id="xpText"></p><div class="result-actions"><button class="restart" id="shareButton" type="button">COMPARTILHAR RESULTADO</button><a href="/ranking">Ver ranking →</a></div></div>
+</div>
+</section>
+<section class="rules">
+<div class="rule"><strong>01 · Um desafio por dia</strong><span>O mesmo jogador misterioso para toda a comunidade, todos os dias.</span></div>
+<div class="rule"><strong>02 · Pistas progressivas</strong><span>Comece com uma pista e receba outra a cada palpite incorreto.</span></div>
+<div class="rule"><strong>03 · XP para quem tem conta</strong><span>Jogue como visitante ou entre na sua conta para pontuar no ranking.</span></div>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+let db=null,session=null,gameState=null,clueNow=1,guesses=[];
+const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function datePt(iso){const [y,m,d]=iso.split('-');return d+'/'+m+'/'+y}
+function bars(){const nodes=$('attemptBars').children;for(let i=0;i<6;i++){nodes[i].className='attempt'+(i<guesses.length?(gameState?.won?' used':' failed'):'')}}
+function renderGuesses(){ $('guessList').innerHTML=guesses.map((g,i)=>'<div class="guess-row"><span>'+esc(g)+'</span><small>Tentativa '+(i+1)+'</small></div>').join(''); }
+function setFeedback(t,kind=''){ $('feedback').textContent=t;$('feedback').className='feedback '+kind; }
+function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true; }
+function showResult(data){
+ gameState={...gameState,...data};$('result').classList.add('show');$('resultTag').textContent=data.won?'CRAQUE DESCOBERTO!':'FIM DE JOGO';$('answerName').textContent=data.answer||'Jogador revelado';
+ $('answerMeta').innerHTML=[data.nationality,data.position,data.birth_year?'Nascido em '+data.birth_year:null].filter(Boolean).map(x=>'<span>'+esc(x)+'</span>').join('');
+ $('answerProfile').textContent=data.profile||'';$('xpText').innerHTML=data.xp>0?'Você ganhou <span class="xp">+'+data.xp+' XP</span>!':(gameState.loggedIn?'Desafio concluído.':'Você jogou como visitante. Entre na sua conta para ganhar XP nos próximos desafios.');
+ lockGame();bars();
+}
+async function auth(){
+ try{const r=await fetch('/api/config/supabase',{cache:'no-store'}),c=await r.json();if(c.configured&&window.supabase){db=window.supabase.createClient(c.url,c.publishableKey);const {data}=await db.auth.getSession();session=data.session;db.auth.onAuthStateChange((_e,s)=>{session=s});}}catch(e){console.warn('Scout auth:',e)}
+}
+async function start(){
+ const payload={};if(session?.access_token)payload.accessToken=session.access_token;
+ const r=await fetch('/api/scout/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+ const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível iniciar o desafio.');
+ gameState=data;localStorage.setItem('scout-session-'+data.date,JSON.stringify({sessionId:data.sessionId,accessKey:data.accessKey}));
+ $('challengeDate').textContent=datePt(data.date);$('loginStatus').textContent=data.loggedIn?'CONTA CONECTADA':'MODO CONVIDADO';
+ guesses=(data.guesses||[]).map(x=>x);clueNow=Math.min(6,Math.max(1,data.attempts+1));
+ $('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=(6-data.attempts)+' tentativas disponíveis';$('clueText').textContent=data.clue||'';
+ renderGuesses();bars();
+ $('loading').classList.add('hidden');$('game').classList.remove('hidden');
+ if(data.finished){showResult(data.result||{won:data.won,attempts:data.attempts,xp:data.xp});}
+}
+$('guessForm').addEventListener('submit',async e=>{
+ e.preventDefault();const guess=$('guessInput').value.trim();if(!guess||$('guessButton').disabled)return;
+ $('guessButton').disabled=true;$('guessButton').textContent='...';setFeedback('Conferindo seu palpite...');
+ try{
+ const r=await fetch('/api/scout/guess',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:gameState.sessionId,accessKey:gameState.accessKey,guess,accessToken:session?.access_token||''})});
+ const data=await r.json();if(!r.ok)throw new Error(data.error||'Palpite não validado.');
+ guesses.push(guess);renderGuesses();bars();$('guessInput').value='';
+ if(data.finished){showResult(data);setFeedback(data.won?'Você encontrou o craque!':'As seis tentativas acabaram. Confira quem era o jogador.',data.won?'success':'error');}
+ else{clueNow=data.attempts+1;$('clueTitle').textContent='PISTA '+clueNow;$('clueCount').textContent=data.remaining+' tentativas disponíveis';$('clueText').textContent=data.clue;setFeedback('Não foi dessa vez. Uma nova pista foi revelada.');$('guessButton').disabled=false;}
+ }catch(err){setFeedback(err.message,'error');$('guessButton').disabled=false;}
+ $('guessButton').textContent='PALPITAR';
+});
+$('shareButton').addEventListener('click',async()=>{
+ const text='Resenha Scout · '+(gameState.won?'Descobri '+$('answerName').textContent:'Joguei o desafio diário')+' em '+guesses.length+'/6 tentativas! Você consegue? '+location.origin+'/scout';
+ if(navigator.share){try{await navigator.share({title:'Resenha Scout',text});}catch(e){}}
+ else{try{await navigator.clipboard.writeText(text);setFeedback('Resultado copiado para compartilhar!','success');}catch(e){setFeedback(text);}}
+});
+(async()=>{try{await auth();await start();}catch(e){$('loading').textContent=e.message;}})();
+})();
+</script>
+<script src="/nav.js" defer></script>
+<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false')}})})})();</script>
+</body></html>
