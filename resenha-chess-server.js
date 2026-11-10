@@ -36,7 +36,7 @@ function addPlayer(room, ws, data, color) {
   const p = { id: crypto.randomBytes(8).toString('hex'), name: cleanName(data.name), color,
     userId: data.user ? data.user.id : null, ws, reconnectToken: makeToken(), disconnectedAt: null, lastMoveAt: 0, wantsRematch: false };
   room.players.push(p); playerRooms.set(ws, { room, player: p });
-  send(ws, { type: 'joined', code: room.code, color, reconnectToken: p.reconnectToken, name: p.name });
+  send(ws, { type: 'joined', code: room.code, playerId: p.id, color, reconnectToken: p.reconnectToken, name: p.name });
   return p;
 }
 async function connect(ws) {
@@ -69,7 +69,7 @@ async function connect(ws) {
       if (!p) return fail('Não foi possível recuperar a conexão. Crie ou entre em uma sala novamente.');
       if (p.ws) { playerRooms.delete(p.ws); try { p.ws.close(4001, 'Sessão reconectada em outro dispositivo'); } catch (_) {} }
       p.ws = ws; p.disconnectedAt = null; clearTimeout(room.expiry); playerRooms.set(ws, { room, player: p });
-      send(ws, { type: 'reconnected', code, color: p.color, reconnectToken: p.reconnectToken, name: p.name }); broadcast(room); return;
+      send(ws, { type: 'reconnected', code, playerId: p.id, color: p.color, reconnectToken: p.reconnectToken, name: p.name }); broadcast(room); return;
     }
     const membership = playerRooms.get(ws);
     if (!membership) return fail('Crie ou entre em uma sala primeiro.');
