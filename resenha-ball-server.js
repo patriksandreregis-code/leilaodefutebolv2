@@ -24,6 +24,7 @@ for(const p of all){
  p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);
  let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy);
  if(dist<30){
+  r.lastTouch={id:p.id,name:p.name,team:p.team,bot:!!p.bot,at:now};
   let nx,ny;if(dist<.001){const speed=Math.hypot(p.vx,p.vy)||1;nx=p.vx/speed;ny=p.vy/speed;}else{nx=dx/dist;ny=dy/dist;}
   const penetration=30-dist;b.x+=nx*(penetration+.5);b.y+=ny*(penetration+.5);
   const playerNormal=p.vx*nx+p.vy*ny,ballNormal=b.vx*nx+b.vy*ny;
