@@ -122,10 +122,10 @@ function draw(){
     // Camisa estilizada
     const jersey=ctx.createRadialGradient(-6,-8,2,0,0,23);jersey.addColorStop(0,light);jersey.addColorStop(.45,base);jersey.addColorStop(1,dark);
     ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fillStyle=jersey;ctx.fill();
-    ctx.lineWidth=2.5;ctx.strokeStyle=green?'#e8ffc3':'#ffd0d1';ctx.stroke();
+    ctx.lineWidth=2.5;ctx.strokeStyle=blue?'#e8ffc3':'#ffd0d1';ctx.stroke();
     // Gola e número
     ctx.beginPath();ctx.arc(0,-12,5,0,Math.PI);ctx.strokeStyle='rgba(15,25,15,.65)';ctx.lineWidth=2;ctx.stroke();
-    ctx.fillStyle=green?'#203713':'#5a101b';ctx.font='900 12px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String((i%9)+1),0,2);
+    ctx.fillStyle=blue?'#203713':'#5a101b';ctx.font='900 12px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String((i%9)+1),0,2);
     // Identificação
     const label=p.id===myId?'VOCÊ':(p.name||'BOT').slice(0,9);
     ctx.font='800 10px Inter';const w=ctx.measureText(label).width+12;
