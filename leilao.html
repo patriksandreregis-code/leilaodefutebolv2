@@ -107,6 +107,7 @@ details{margin:.3rem 0}summary{cursor:pointer}
   <a href="/">← Voltar ao menu</a>
   <h1>Leilão de Futebol</h1>
   <p class="mu">Dê lances nos craques e monte o melhor time sem estourar o orçamento.</p>
+  <p class="mu" style="padding:.65rem .8rem;border:1px solid var(--line);border-radius:8px;background:#0b100d;font-size:.88rem">Você pode jogar sem cadastro! <a href="/conta" style="color:var(--ac);font-weight:800">Entre na sua conta</a> para ganhar XP e subir de nível.</p>
   <input id="name" placeholder="Seu nome" maxlength="16">
   <input id="room" placeholder="Código da sala" maxlength="8">
   <button class="pri" onclick="join(false)">Entrar na sala</button>
@@ -195,13 +196,10 @@ async function join(create) {
   name = $('name').value.trim(); room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
   token = (saved && saved.room === room && saved.name === name) ? (saved.token || '') : '';
   if (!name || !room) return alert('Informe seu nome e o código da sala.');
-  showJoining('Verificando sua conta…');
-  try {
-    const session = await loadAuctionAuth();
-    if (!session || !session.access_token) { showJoinForm(); return alert('Entre na sua conta do Resenha do Fut antes de jogar.'); }
-    if (!session.user.email_confirmed_at) { showJoinForm(); return alert('Confirme seu e-mail antes de participar do Leilão valendo XP.'); }
-    connect();
-  } catch (e) { showJoinForm(); alert(e.message || 'Não foi possível verificar sua conta.'); }
+  showJoining('Conectando à sala…');
+  // A conta é opcional: se houver uma sessão válida, o servidor registra o jogador
+  // para XP; sem sessão, a partida funciona normalmente sem pontuação de experiência.
+  connect();
 }
 function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
 function leave() { leaveAuctionVoice(); store.set(null); location.href = '/leilao'; }
@@ -210,7 +208,15 @@ function connect() {
   authFailed = false;
   clearTimeout(retry);
   const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  w.onopen = async () => { lastMsg = Date.now(); try { const session = await loadAuctionAuth(); if (!session || !session.access_token) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert('Sua sessão expirou. Entre novamente na sua conta.'); return; } send({ t: 'join', room, name, token, re: !!(S || saved), accessToken: session.access_token }); } catch (e) { authFailed = true; store.set(null); w.close(); showJoinForm(); alert(e.message || 'Falha ao validar sua conta.'); } };
+  w.onopen = async () => {
+    lastMsg = Date.now();
+    let accessToken = '';
+    try {
+      const session = await loadAuctionAuth();
+      if (session && session.access_token && session.user.email_confirmed_at) accessToken = session.access_token;
+    } catch (e) { console.warn('[Leilão] Conta indisponível; entrando sem XP:', e.message); }
+    send({ t: 'join', room, name, token, re: !!(S || saved), accessToken });
+  };
   w.onmessage = e => {
     lastMsg = Date.now();
     const m = JSON.parse(e.data);
