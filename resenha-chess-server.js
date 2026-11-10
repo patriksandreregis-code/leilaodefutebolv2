@@ -90,7 +90,8 @@ async function connect(ws) {
       room.chat = room.chat || [];
       room.chat.push({ id: crypto.randomBytes(6).toString('hex'), playerId: player.id, name: player.name, text: message, at: now });
       if (room.chat.length > 50) room.chat.splice(0, room.chat.length - 50);
-      broadcast(room);
+      const packet = { type: 'chat_message', message: room.chat[room.chat.length - 1] };
+      room.players.forEach(p => send(p.ws, packet));
       return;
     }
     if (m.type === 'move') {
