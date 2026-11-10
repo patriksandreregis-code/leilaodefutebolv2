@@ -252,10 +252,12 @@ $('botTab').onclick=()=>setMode('bot');$('onlineTab').onclick=()=>setMode('onlin
 function kick(p){let dx=ball.x-p.x,dy=ball.y-p.y,d=Math.hypot(dx,dy)||1;if(d<75){botLastTouch=p;ball.vx+=dx/d*500;ball.vy+=dy/d*500}}
 function goal(t){score[t]++;if(botLastTouch&&botLastTouch.team===t){const old=botGoalStats[botLastTouch.id]||{id:botLastTouch.id,name:botLastTouch.name,team:botLastTouch.team,goals:0};old.goals++;botGoalStats[botLastTouch.id]=old;botLastGoal={name:botLastTouch.name,team:t};}else botLastGoal={name:'Gol sem autor identificado',team:t};spawnGoalEffect(t);renderBotStats();ball={x:500,y:300,vx:0,vy:0};botList.forEach(p=>{p.x=p.team?700:300;p.y=150+Math.random()*300});if(goldenGoal)after(t===0?'VOCÊ VENCEU NO GOL DE OURO!':'OS BOTS VENCERAM NO GOL DE OURO!','Placar final: '+score[0]+' x '+score[1]+'.')}
 function physics(dt){
- const radius=11,wallLeft=31,wallRight=969,wallTop=31,wallBottom=569;
+ const wallLeft=31,wallRight=969,wallTop=31,wallBottom=569;
  const previousX=ball.x,previousY=ball.y;
  const nextX=previousX+ball.vx*dt,nextY=previousY+ball.vy*dt;
- const crossY=previousY+(nextY-previousY)*(Math.abs(nextX-previousX)>.001?Math.max(0,Math.min(1,(previousX-20)/(previousX-nextX||1))):0);
+ const goalPlane=nextX<previousX?20:980;
+ const crossT=Math.abs(nextX-previousX)>.001?Math.max(0,Math.min(1,(goalPlane-previousX)/(nextX-previousX))):0;
+ const crossY=previousY+(nextY-previousY)*crossT;
  const goalMouth=crossY>=251&&crossY<=349;
  if(nextX<=20&&previousX>20&&goalMouth){goal(1);return;}
  if(nextX>=980&&previousX<980&&goalMouth){goal(0);return;}
