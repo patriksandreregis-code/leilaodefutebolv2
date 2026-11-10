@@ -39,7 +39,7 @@ const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
 async function verifyAuctionUser(accessToken) {
   if (!accessToken || !process.env.SUPABASE_URL || !process.env.SUPABASE_PUBLISHABLE_KEY) return null;
   try {
-    const response = await fetch(process.env.SUPABASE_URL.replace(/\\/$/, '') + '/auth/v1/user', {
+    const response = await fetch(process.env.SUPABASE_URL.replace(/\/$/, '') + '/auth/v1/user', {
       headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, Authorization: 'Bearer ' + accessToken }
     });
     if (!response.ok) return null;
@@ -56,7 +56,7 @@ async function awardAuctionXP(r) {
   const eligible = r.players.filter(p => p.supabaseUserId && p.hasValidBid);
   if (eligible.length < 2 || new Set(eligible.map(p => p.supabaseUserId)).size < 2) return;
   const champion = eligible.slice().sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
-  const base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+  const base = process.env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/';
   const headers = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' };
   for (const p of eligible) {
     const winner = champion && champion.id === p.id;
