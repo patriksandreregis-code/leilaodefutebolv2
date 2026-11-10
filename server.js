@@ -256,7 +256,9 @@ const server = http.createServer((q, s) => {
         seen.add(name); counts[item.pos]++; cleanLineup.push([found[0], found[1], found[2]]);
       }
       if (counts.GK !== expected[0] || counts.DEF !== expected[1] || counts.MID !== expected[2] || counts.ATT !== expected[3]) return sendJson(400, { error: 'A formação não corresponde à escalação.' });
-      const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const dateParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const dateValues = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
+      const date = dateValues.year + '-' + dateValues.month + '-' + dateValues.day;
       if (mode === 'daily' && seed !== date.replace(/-/g, '')) return sendJson(400, { error: 'O sorteio do Desafio do Dia não corresponde à data atual.' });
       const campaign = copa.campaign(cleanLineup, SQUADS, { fmt, style, diff, seed });
       const fingerprint = crypto.createHash('sha256').update(JSON.stringify({ mode, date, seed, form, style, diff, fmt, lineup: cleanLineup })).digest('hex');
