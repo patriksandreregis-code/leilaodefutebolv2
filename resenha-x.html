@@ -121,20 +121,104 @@ function afterHumanMove(){
 }
 function finish(){render();$('status').textContent=game.isCheckmate()?'XEQUE-MATE! '+(game.turn()==='w'?'O bot venceu.':'Você venceu!'):game.isDraw()?'Empate! Boa partida.':'Partida encerrada.';}
 function evaluate(g){
- let score=0;const b=g.board();
- for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(!p)continue;let v=values[p.type];if(p.type==='p')v+=p.color==='w'?(6-r)*5:(r-1)*5;if(p.type==='n'||p.type==='b')v+=20-Math.abs(3.5-c)*8-Math.abs(3.5-r)*8;score+=(p.color==='b'?v:-v);}
+ if(g.isCheckmate())return g.turn()==='b'?-100000:100000;
+ if(g.isDraw())return 0;
+ const board=g.board(),material={p:100,n:320,b:335,r:500,q:900,k:20000};
+ let score=0,bishops={w:0,b:0},pawnFiles={w:Array(8).fill(0),b:Array(8).fill(0)};
+ for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+  const p=board[r][c];if(!p)continue;
+  const color=p.color,sign=color==='b'?1:-1,center=7-(Math.abs(3.5-r)+Math.abs(3.5-c));
+  let value=material[p.type];
+  if(p.type==='p'){
+   pawnFiles[color][c]++;
+   value+=(color==='w'?(6-r):(r-1))*7;
+   value+=Math.max(0,center)*2;
+  }else if(p.type==='n')value+=center*10;
+  else if(p.type==='b'){value+=center*6;bishops[color]++;}
+  else if(p.type==='r'){if(c===3||c===4)value+=8;}
+  else if(p.type==='q')value+=center*2;
+  else if(p.type==='k'){
+   const early=g.moveNumber()<18;
+   if(early)value-=Math.max(0,center)*7;
+   const shield=color==='w'?(r===7?1:0):(r===0?1:0);
+   if(shield){const pawnRow=color==='w'?6:1;for(let x=Math.max(0,c-1);x<=Math.min(7,c+1);x++)if(board[pawnRow][x]?.type==='p'&&board[pawnRow][x].color===color)value+=12;}
+  }
+  score+=sign*value;
+ }
+ if(bishops.w>=2)score-=28;if(bishops.b>=2)score+=28;
+ for(const color of ['w','b']){
+  const sign=color==='b'?1:-1,counts=pawnFiles[color];
+  for(let c=0;c<8;c++)if(counts[c]>1)score+=sign*(-14*(counts[c]-1));
+  for(let c=0;c<8;c++)if(counts[c]&&!(counts[c-1]||counts[c+1]))score+=sign*-10;
+ }
  return score;
 }
+function moveOrder(m){
+ const vals={p:100,n:320,b:335,r:500,q:900,k:20000};
+ let s=m.captured?10*vals[m.captured]-vals[m.piece]:0;
+ if(m.promotion)s+=vals[m.promotion]+800;
+ if(m.flags&&m.flags.includes('k'))s+=35;
+ return s;
+}
+function quiescence(g,alpha,beta,ply,nodes,qDepth){
+ nodes.count++;const checked=g.isCheck(),stand=evaluate(g),maximizing=g.turn()==='b';
+ if(nodes.count>nodes.limit||qDepth<=0)return stand;
+ if(!checked){
+  if(maximizing){if(stand>=beta)return beta;alpha=Math.max(alpha,stand);}
+  else{if(stand<=alpha)return alpha;beta=Math.min(beta,stand);}
+ }
+ let moves=g.moves({verbose:true});
+ if(!checked)moves=moves.filter(m=>m.captured||m.promotion);
+ moves.sort((a,b)=>moveOrder(b)-moveOrder(a));
+ if(!moves.length)return stand;
+ let best=maximizing?-Infinity:Infinity;
+ for(const m of moves){
+  if(nodes.count>nodes.limit)break;
+  g.move({from:m.from,to:m.to,promotion:m.promotion});
+  const score=quiescence(g,alpha,beta,ply+1,nodes,qDepth-1);
+  g.undo();
+  if(maximizing){best=Math.max(best,score);alpha=Math.max(alpha,best);}
+  else{best=Math.min(best,score);beta=Math.min(beta,best);}
+  if(beta<=alpha)break;
+ }
+ return checked?best:(maximizing?Math.max(stand,best):Math.min(stand,best));
+}
+function searchPosition(g,depth,alpha,beta,ply,nodes){
+ nodes.count++;
+ if(nodes.count>nodes.limit)return evaluate(g);
+ if(g.isCheckmate())return g.turn()==='b'?-100000+ply:100000-ply;
+ if(g.isDraw())return 0;
+ if(depth<=0)return quiescence(g,alpha,beta,ply,nodes,4);
+ const maximizing=g.turn()==='b',moves=g.moves({verbose:true});
+ moves.sort((a,b)=>moveOrder(b)-moveOrder(a));
+ let best=maximizing?-Infinity:Infinity;
+ for(const m of moves){
+  if(nodes.count>nodes.limit)break;
+  g.move({from:m.from,to:m.to,promotion:m.promotion});
+  const score=searchPosition(g,depth-1,alpha,beta,ply+1,nodes);
+  g.undo();
+  if(maximizing){best=Math.max(best,score);alpha=Math.max(alpha,best);}
+  else{best=Math.min(best,score);beta=Math.min(beta,best);}
+  if(beta<=alpha)break;
+ }
+ return best;
+}
 function chooseBotMove(){
- const moves=game.moves({verbose:true});if(!moves.length)return null;const level=$('difficulty').value;
+ const moves=game.moves({verbose:true});if(!moves.length)return null;
+ const level=$('difficulty').value;
  if(level==='easy')return moves[Math.floor(Math.random()*moves.length)];
- let scored=moves.map(m=>{const copy=new ChessCtor(game.fen());copy.move(m);return {m,score:evaluate(copy)+(m.captured?values[m.captured]*.15:0)};}).sort((a,b)=>b.score-a.score);
- if(level==='medium'){const top=scored.slice(0,Math.min(4,scored.length));return top[Math.floor(Math.random()*top.length)].m;}
- let best=null,bestScore=-Infinity;
- for(const item of scored.slice(0,14)){const copy=new ChessCtor(game.fen());copy.move(item.m);const replies=copy.moves({verbose:true});let worst=Infinity;
-  for(const reply of replies){const next=new ChessCtor(copy.fen());next.move(reply);worst=Math.min(worst,evaluate(next));}
-  const score=replies.length?worst:evaluate(copy);if(score>bestScore){bestScore=score;best=item.m;}
- }return best||scored[0].m;
+ const depth=level==='hard'?3:2,nodes={count:0,limit:level==='hard'?24000:9000};
+ moves.sort((a,b)=>moveOrder(b)-moveOrder(a));
+ let bestScore=-Infinity,bestMoves=[];
+ for(const m of moves){
+  if(nodes.count>nodes.limit)break;
+  game.move({from:m.from,to:m.to,promotion:m.promotion});
+  const score=searchPosition(game,depth-1,-Infinity,Infinity,1,nodes);
+  game.undo();
+  if(score>bestScore){bestScore=score;bestMoves=[m];}
+  else if(score===bestScore)bestMoves.push(m);
+ }
+ return bestMoves.length?bestMoves[Math.floor(Math.random()*bestMoves.length)]:moves[0];
 }
 function botMove(){if(mode!=='bot'||game.turn()!=='b'||game.isGameOver()){thinking=false;render();return;}const move=chooseBotMove();if(move){game.move(move);history.push(game.fen());}thinking=false;selected=null;legal=[];render();if(game.isGameOver())finish();}
 const lessons=[['e2','e4','Comece ocupando o centro. Os peões centrais ajudam a controlar casas importantes.'],['e7','e5','O bot responde disputando o centro.'],['g1','f3','Desenvolva os cavalos: tire as peças de suas casas iniciais.'],['b8','c6','As pretas desenvolvem uma peça e defendem o peão central.']];
