@@ -148,7 +148,7 @@ function applyClubBadge(element,name){
  element.title=name;element.setAttribute('aria-label','Escudo do '+name);
  element.replaceChildren();
  if(teamId){
-  const img=document.createElement('img');img.src='https://media.api-sports.io/football/teams/'+teamId+'.png';
+  const img=document.createElement('img');img.src='/club-logos/'+teamId+'.png';
   img.alt='Escudo do '+name;img.loading='eager';img.decoding='async';img.referrerPolicy='no-referrer';
   img.addEventListener('error',()=>{element.classList.remove('has-logo');element.textContent=code;},{once:true});
   img.addEventListener('load',()=>element.classList.add('has-logo'),{once:true});
