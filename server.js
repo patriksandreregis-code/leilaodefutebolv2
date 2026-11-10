@@ -227,6 +227,57 @@ const server = http.createServer((q, s) => {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return s.end(JSON.stringify({ configured, url: configured ? process.env.SUPABASE_URL : null, publishableKey: configured ? process.env.SUPABASE_PUBLISHABLE_KEY : null }));
   }
+  if (pth === '/api/dado/complete' && q.method === 'POST') {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    let raw = '', tooLarge = false;
+    q.on('data', chunk => { if (raw.length + chunk.length > 12000) tooLarge = true; else raw += chunk; });
+    q.on('end', async () => {
+      if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
+      let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const user = await verifyAuctionUser(String(body.accessToken || ''));
+      if (!user) return sendJson(401, { error: 'Entre na sua conta do Resenha do Fut com e-mail confirmado para receber XP.' });
+      const mode = body.mode === 'daily' ? 'daily' : body.mode === 'free' ? 'free' : null;
+      const seed = String(body.seed || '').toUpperCase();
+      const form = String(body.form || '');
+      const style = Number(body.style), diff = Number(body.diff), fmt = Number(body.fmt);
+      const forms = { '4-3-3': [1,4,3,3], '4-4-2': [1,4,4,2], '3-5-2': [1,3,5,2], '5-3-2': [1,5,3,2], '4-5-1': [1,4,5,1], '3-4-3': [1,3,4,3] };
+      const expected = forms[form], lineup = body.lineup;
+      if (!mode || !expected || !Array.isArray(lineup) || lineup.length !== 11 ||
+          !Number.isInteger(style) || style < 0 || style > 2 ||
+          !Number.isInteger(diff) || diff < 0 || diff > 2 || ![32,48].includes(fmt) ||
+          !/^[A-Z0-9]{4,12}$/.test(seed)) return sendJson(400, { error: 'Dados da campanha inválidos.' });
+      const counts = { GK: 0, DEF: 0, MID: 0, ATT: 0 }, seen = new Set(), cleanLineup = [];
+      for (const item of lineup) {
+        if (!item || typeof item.name !== 'string' || !['GK','DEF','MID','ATT'].includes(item.pos) || !Number.isFinite(item.rating)) return sendJson(400, { error: 'Escalação inválida.' });
+        const name = item.name.trim();
+        if (seen.has(name)) return sendJson(400, { error: 'Há jogadores repetidos na escalação.' });
+        const found = SQUADS.flatMap(sq => sq.p).find(p => p[0] === name && p[1] === item.pos && p[2] === item.rating);
+        if (!found) return sendJson(400, { error: 'A escalação contém jogador ou nota inválida.' });
+        seen.add(name); counts[item.pos]++; cleanLineup.push([found[0], found[1], found[2]]);
+      }
+      if (counts.GK !== expected[0] || counts.DEF !== expected[1] || counts.MID !== expected[2] || counts.ATT !== expected[3]) return sendJson(400, { error: 'A formação não corresponde à escalação.' });
+      const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      if (mode === 'daily' && seed !== date.replace(/-/g, '')) return sendJson(400, { error: 'O sorteio do Desafio do Dia não corresponde à data atual.' });
+      const campaign = copa.campaign(cleanLineup, SQUADS, { fmt, style, diff, seed });
+      const fingerprint = crypto.createHash('sha256').update(JSON.stringify({ mode, date, seed, form, style, diff, fmt, lineup: cleanLineup })).digest('hex');
+      const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!secret || !process.env.SUPABASE_URL) return sendJson(503, { error: 'O serviço de XP ainda não está configurado no servidor.' });
+      try {
+        const response = await fetch(process.env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/award_dado_xp', {
+          method: 'POST',
+          headers: { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_user_id: user.id, p_claim_date: date, p_mode: mode, p_campaign_id: fingerprint, p_champion: campaign.res.champ })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error('Supabase RPC HTTP ' + response.status + ': ' + JSON.stringify(result).slice(0, 300));
+        return sendJson(200, { ...result, champion: campaign.res.champ });
+      } catch (e) {
+        console.error('[XP] Falha ao registrar Dado da Copa:', e.message);
+        return sendJson(500, { error: 'Não foi possível registrar o XP agora. Sua campanha foi concluída; tente atualizar o ranking em instantes.' });
+      }
+    });
+    return;
+  }
   if (pth === '/api/leilao-voice/token' && q.method === 'POST') {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     let raw = '', tooLarge = false;
