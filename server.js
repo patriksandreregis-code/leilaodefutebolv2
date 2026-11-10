@@ -271,7 +271,7 @@ const server = http.createServer(async (q, s) => {
             if (!created.ok) throw new Error('Não foi possível iniciar a sessão: ' + (await created.text()).slice(0,200));
             session = (await created.json())[0];
           }
-          const playerResponse = await fetch(base + 'scout_players?select=clues& id=eq.' + challenge.player_id, { headers });
+          const playerResponse = await fetch(base + 'scout_players?select=clues&id=eq.' + challenge.player_id, { headers });
           let firstClue = 'A primeira pista está pronta.';
           if (playerResponse.ok) { const playerRows = await playerResponse.json(); if (playerRows[0]) firstClue = playerRows[0].clues[0]; }
           return sendJson(200, { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: firstClue, loggedIn: !!user });
@@ -281,7 +281,7 @@ const server = http.createServer(async (q, s) => {
         const accessKey = String(body.accessKey || '');
         const guess = String(body.guess || '').trim().slice(0,80);
         if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(accessKey) || !guess) return sendJson(400, { error: 'Palpite ou sessão inválida.' });
-        const sessionResponse = await fetch(base + 'scout_sessions?select=id,user_id,access_token& id=eq.' + sessionId + '&access_token=eq.' + accessKey, { headers });
+        const sessionResponse = await fetch(base + 'scout_sessions?select=id,user_id,access_token&id=eq.' + sessionId + '&access_token=eq.' + accessKey, { headers });
         if (!sessionResponse.ok) throw new Error('Não foi possível validar sua sessão.');
         const sessionRows = await sessionResponse.json();
         if (!sessionRows[0]) return sendJson(403, { error: 'Sessão inválida. Inicie o desafio novamente.' });
