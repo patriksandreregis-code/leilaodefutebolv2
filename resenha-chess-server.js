@@ -29,7 +29,7 @@ function publicState(room) {
 function broadcast(room) { const state = publicState(room); room.players.forEach(p => send(p.ws, state)); }
 function closeRoom(room, reason) {
   if (!room || room.closed) return;
-  room.closed = true; clearTimeout(room.expiry); rooms.delete(room.code);
+  room.closed = true; clearTimeout(room.expiry); clearTimeout(room.maxAgeTimer); rooms.delete(room.code);
   room.players.forEach(p => { if (p.ws) { playerRooms.delete(p.ws); send(p.ws, { type: 'room_closed', reason }); try { p.ws.close(1000, 'Sala encerrada'); } catch (_) {} } });
 }
 function addPlayer(room, ws, data, color) {
@@ -40,6 +40,7 @@ function addPlayer(room, ws, data, color) {
   return p;
 }
 async function connect(ws) {
+  let messageWindow = Date.now(), messageCount = 0;
   const fail = message => send(ws, { type: 'error', message });
   const handle = async raw => {
     let m; try { m = JSON.parse(raw.toString()); } catch (_) { return fail('Mensagem inválida.'); }
@@ -49,9 +50,10 @@ async function connect(ws) {
       const user = await verifyUser(String(m.accessToken || ''));
       const name = cleanName(m.name);
       if (m.type === 'create') {
+        if (rooms.size >= 200) return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         let code = makeCode(); while (rooms.has(code)) code = makeCode();
-        const room = { code, phase: 'waiting', game: new Chess(), players: [], createdAt: Date.now(), lastActivity: Date.now(), lastMove: null, result: null, expiry: null, closed: false };
-        rooms.set(code, room); addPlayer(room, ws, { name, user }, 'w');
+        const room = { code, phase: 'waiting', game: new Chess(), players: [], createdAt: Date.now(), lastActivity: Date.now(), lastMove: null, result: null, expiry: null, maxAgeTimer: null, closed: false };
+        rooms.set(code, room); room.maxAgeTimer = setTimeout(() => closeRoom(room, 'A sala expirou após três horas.'), 3 * 60 * 60 * 1000); addPlayer(room, ws, { name, user }, 'w');
         send(ws, { type: 'room_created', code, message: 'Sala criada. Compartilhe o código com seu adversário.' }); broadcast(room); return;
       }
       const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -104,7 +106,11 @@ async function connect(ws) {
     }
     if (m.type === 'leave') closeRoom(room, 'Um jogador saiu da sala.');
   };
-  ws.on('message', raw => { handle(raw).catch(error => { console.error('[Resenha Chess] Erro:', error); fail('Ocorreu um erro ao processar a solicitação.'); }); });
+  ws.on('message', raw => {
+    const now = Date.now(); if (now - messageWindow > 10000) { messageWindow = now; messageCount = 0; }
+    if (++messageCount > 40) { fail('Muitas solicitações em pouco tempo.'); ws.close(1008, 'Limite de mensagens'); return; }
+    handle(raw).catch(error => { console.error('[Resenha Chess] Erro:', error); fail('Ocorreu um erro ao processar a solicitação.'); });
+  });
   ws.on('close', () => {
     const membership = playerRooms.get(ws); if (!membership) return;
     const { room, player } = membership; playerRooms.delete(ws); player.ws = null; player.disconnectedAt = Date.now(); broadcast(room);
