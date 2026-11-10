@@ -80,7 +80,7 @@ const glyph={wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',bk:'♚',bq:'
 const values={p:100,n:320,b:330,r:500,q:900,k:20000};
 const files='abcdefgh', ranks='87654321';
 let game=new ChessCtor(),selected=null,legal=[],orientation='w',mode='bot',thinking=false,history=[],lessonStep=0;
-let chessSocket=null,roomCode='',reconnectToken='',playerId='',playerColor=null,onlinePhase='idle',onlinePlayers=[];
+let chessSocket=null,roomCode='',reconnectToken='',playerId='',playerColor=null,onlinePhase='idle',onlinePlayers=[],reconnectAttempts=0;
 let onlineStatus='Crie uma sala ou entre usando um código.';
 const $=id=>document.getElementById(id);
 const clubCode=name=>name.split(/\s+/).map(x=>x[0]).join('').slice(0,3).toUpperCase();
@@ -239,7 +239,7 @@ function connectChess(payload){
  ws.addEventListener('message',event=>{
   if(chessSocket!==ws)return;let data;try{data=JSON.parse(event.data);}catch(e){return;}
   if(data.type==='joined'||data.type==='reconnected'){
-   roomCode=data.code;playerId=data.playerId||playerId;playerColor=data.color;reconnectToken=data.reconnectToken;orientation=playerColor;
+   reconnectAttempts=0;roomCode=data.code;playerId=data.playerId||playerId;playerColor=data.color;reconnectToken=data.reconnectToken;orientation=playerColor;
    try{localStorage.setItem('resenhaChessRoom',roomCode);localStorage.setItem('resenhaChessReconnect',reconnectToken);}catch(e){}
    $('roomCodeInput').value=roomCode;$('copyRoom').disabled=false;$('leaveRoom').disabled=false;
    setOnlineStatus('Conectado à sala '+roomCode+'. Você joga com as '+(playerColor==='w'?'brancas':'pretas')+'.');
@@ -264,7 +264,7 @@ function connectChess(payload){
   }else if(data.type==='error'){setOnlineStatus(data.message||'Não foi possível completar a ação.');}
   else if(data.type==='room_closed'){clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;setOnlineStatus(data.reason||'A sala foi encerrada.');}
  });
- ws.addEventListener('close',()=>{if(chessSocket===ws&&mode==='online')setOnlineStatus('Conexão encerrada. Se a sala ainda estiver ativa, tente reconectar.');});
+ ws.addEventListener('close',()=>{if(chessSocket!==ws||mode!=='online')return;let savedCode='',savedToken='';try{savedCode=localStorage.getItem('resenhaChessRoom')||'';savedToken=localStorage.getItem('resenhaChessReconnect')||'';}catch(e){}if(savedCode&&savedToken&&reconnectAttempts<5){const wait=Math.min(1000*Math.pow(2,reconnectAttempts),8000);reconnectAttempts++;setOnlineStatus('Conexão interrompida. Tentando reconectar em '+Math.ceil(wait/1000)+'s…');setTimeout(()=>{if(mode==='online'&&!chessSocket||mode==='online'&&chessSocket.readyState===3)connectChess({type:'reconnect',code:savedCode,reconnectToken:savedToken});},wait);}else setOnlineStatus('Conexão encerrada. Tente entrar novamente na sala.');});
  ws.addEventListener('error',()=>{if(chessSocket===ws)setOnlineStatus('Não foi possível conectar ao servidor. Tente novamente.');});
 }
 function restoreChessRoom(){
