@@ -15,7 +15,7 @@ async function awardMatchXP(r){
  if(r.xpAwarded||!r.matchId||Date.now()-r.matchStartedAt<30000)return;
  const players=[...r.players.values()];
  const authenticated=players.filter(p=>p.userId&&r.matchUserIds&&r.matchUserIds.has(p.userId));
- if(authenticated.length<2||new Set(authenticated.map(p=>p.userId)).size<2||!authenticated.some(a=>authenticated.some(b=>a.team!==b.team&&a.userId!==b.userId)))return;
+ if(authenticated.length<2||new Set(authenticated.map(p=>p.userId)).size<2||!authenticated.some(a=>authenticated.some(b=>a.team!==b.team&&a.userId!==b.userId))){for(const p of players)send(p.ws,{type:'xp',awarded:false,reason:'eligible_opponents'});return;}
  r.xpAwarded=true;
  const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
  if(!secret||!process.env.SUPABASE_URL){console.warn('[Resenha Ball XP] SUPABASE_SECRET_KEY não configurada.');return;}
