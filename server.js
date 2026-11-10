@@ -36,6 +36,42 @@ const escH = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;
 const DEFAULT_CFG = { budget: 200, size: 9, form: '3-3-2', bidSec: 12, packs: ['atuais', 'lendas'], copa: false, torneio: false, fmt: 48 };
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const send = (ws, m) => ws && ws.readyState === 1 && ws.send(JSON.stringify(m));
+async function verifyAuctionUser(accessToken) {
+  if (!accessToken || !process.env.SUPABASE_URL || !process.env.SUPABASE_PUBLISHABLE_KEY) return null;
+  try {
+    const response = await fetch(process.env.SUPABASE_URL.replace(/\\/$/, '') + '/auth/v1/user', {
+      headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, Authorization: 'Bearer ' + accessToken }
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    return user && user.id && user.email_confirmed_at ? user : null;
+  } catch (e) { console.error('Falha ao validar conta do Leilão:', e.message); return null; }
+}
+async function awardAuctionXP(r) {
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret || !process.env.SUPABASE_URL) {
+    console.warn('[XP] SUPABASE_SECRET_KEY não configurada; XP do Leilão aguardando configuração.');
+    return;
+  }
+  const eligible = r.players.filter(p => p.supabaseUserId && p.hasValidBid);
+  if (eligible.length < 2 || new Set(eligible.map(p => p.supabaseUserId)).size < 2) return;
+  const champion = [...r.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
+  const base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+  const headers = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' };
+  for (const p of eligible) {
+    const winner = champion && champion.id === p.id;
+    const xp = 10 + (winner ? 20 : 0);
+    const eventId = 'leilao:' + r.code + ':' + p.supabaseUserId;
+    try {
+      const result = await fetch(base + 'game_results', { method: 'POST', headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' },
+        body: JSON.stringify({ user_id: p.supabaseUserId, game_key: 'leilao', result_code: winner ? 'win' : 'completed', external_event_id: eventId, xp_awarded: xp }) });
+      if (!result.ok) throw new Error('game_results HTTP ' + result.status + ': ' + (await result.text()).slice(0, 300));
+      const history = await fetch(base + 'xp_history', { method: 'POST', headers,
+        body: JSON.stringify({ user_id: p.supabaseUserId, game_key: 'leilao', event_key: winner ? 'leilao_winner' : 'leilao_completed', description: winner ? 'Concluiu uma disputa válida e venceu o Leilão de Futebol' : 'Concluiu uma disputa válida do Leilão de Futebol', xp_delta: xp, source_event_id: eventId }) });
+      if (!history.ok) throw new Error('xp_history HTTP ' + history.status + ': ' + (await history.text()).slice(0, 300));
+    } catch (e) { console.error('[XP] Não foi possível registrar XP do Leilão para', p.supabaseUserId, e.message); }
+  }
+}
 const slotsOf = r => { const [d, m, a] = r.cfg.form.split('-').map(Number); return { GK: 1, DEF: d, MID: m, ATT: a }; };
 const unit = r => r.cfg.budget / 200;
 const baseOf = (r, x, l) => { let b = Math.max(1, Math.round((x - 80) * unit(r))); if (l && l.round > 1) b = Math.max(1, Math.ceil(b / 2)); return b; }; // repescagem: preço pela metade
@@ -82,7 +118,7 @@ function save() {
   saveT = setTimeout(() => {
     try {
       fs.writeFileSync(FILE, JSON.stringify(Object.values(rooms).map(r => ({ code: r.code, phase: r.phase, host: r.host, cfg: r.cfg, queue: r.queue, lot: r.lot, log: r.log, chat: r.chat,
-        sales: r.sales, copaRes: r.copaRes, torneio: r.torneio, unsold: r.unsold, round: r.round, warned: r.warned, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, token: p.token, budget: p.budget, squad: p.squad })) }))));
+        sales: r.sales, copaRes: r.copaRes, torneio: r.torneio, unsold: r.unsold, round: r.round, warned: r.warned, banned: r.banned, touched: r.touched, players: r.players.map(p => ({ id: p.id, name: p.name, token: p.token, supabaseUserId: p.supabaseUserId || null, hasValidBid: !!p.hasValidBid, budget: p.budget, squad: p.squad })) }))));
     } catch (e) {}
   }, 800);
 }
@@ -123,6 +159,7 @@ function nextLot(r) {
     }
     r.phase = 'end'; r.lot = null;
     const w = [...r.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
+    if (r.players.filter(p => p.supabaseUserId && p.hasValidBid).length >= 2) awardAuctionXP(r);
     if (r.cfg.copa && SQUADS.length > 8) runCopa(r);
     if (r.cfg.torneio) runTorneio(r);
     return say(r, `Fim do leilão! O melhor time é de ${w ? w.name : '—'}!`, 'sold');
@@ -287,9 +324,11 @@ wss.on('connection', (ws, req) => {
   if (ipConns[ip] > MAX_CONN_IP) return ws.close(1008, 'Muitas conexões');
   let msgs = 0, win = Date.now(), r, p;
   const err = text => send(ws, { t: 'err', text });
-  const handle = d => {
+  const handle = async d => {
     let m; try { m = JSON.parse(d); } catch { return; }
     if (m.t === 'join') {
+      const authUser = await verifyAuctionUser(String(m.accessToken || ''));
+      if (!authUser) return err('Para jogar o Leilão valendo XP, entre na sua conta do Resenha do Fut com e-mail confirmado.');
       const code = String(m.room || '').toUpperCase().trim().slice(0, 8), name = String(m.name || '').trim().replace(/\s+/g, ' ').slice(0, 16);
       if (!code || !name) return err('Informe seu nome e o código da sala.');
       if (!NAME_RE.test(name)) return err('Nome inválido: use de 2 a 16 letras, números ou espaços.');
@@ -301,15 +340,16 @@ wss.on('connection', (ws, req) => {
       }
       r = rooms[code] || (rooms[code] = { code, players: [], phase: 'lobby', queue: [], lot: null, log: [], chat: [], host: null, timer: null, timers: [], sales: [], copaRes: null, torneio: null, unsold: [], round: 1, warned: {}, banned: [], cfg: { ...DEFAULT_CFG } });
       if (r.banned.includes(name)) { r = null; return err('Você foi removido desta sala.'); }
-      p = r.players.find(x => x.name === name); // mesmo nome = reconexão
-      if (p) { // reconexão: só quem tem o token da sessão (ou, no lobby, um lugar vazio) assume o lugar
-        const mine = p.token && m.token === p.token;
-        if (p.token && !mine && !(r.phase === 'lobby' && !p.ws)) return err('Esse nome já está em uso nesta sala. Escolha outro nome.');
-        if (!p.token || !mine) p.token = newToken();
+      p = r.players.find(x => x.supabaseUserId === authUser.id);
+      const sameName = r.players.find(x => x.name.toLowerCase() === name.toLowerCase() && x.supabaseUserId !== authUser.id);
+      if (sameName) return err('Esse apelido já está sendo usado por outra conta nesta sala. Escolha outro.');
+      if (p) {
+        if (p.token && m.token !== p.token && p.ws && p.ws.readyState === 1) return err('Esta conta já está conectada à sala em outra janela.');
+        p.name = name; p.token = newToken();
         const old = p.ws; p.ws = ws; if (old && old !== ws) { try { old.close(); } catch (e) {} }
       }
       else if (r.phase !== 'lobby' || r.players.length >= MAX_PLAYERS) { r = null; return err('Sala em andamento ou cheia.'); }
-      else { p = { id: Math.random().toString(36).slice(2, 8), name, token: newToken(), ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
+      else { p = { id: Math.random().toString(36).slice(2, 8), name, token: newToken(), supabaseUserId: authUser.id, hasValidBid: false, ws, budget: r.cfg.budget, squad: [] }; r.players.push(p); }
       if (!r.host || !r.players.some(x => x.id === r.host)) r.host = p.id;
       bc(r);
     } else if (!r || !p) return;
@@ -326,6 +366,7 @@ wss.on('connection', (ws, req) => {
       }
       bc(r);
     } else if (m.t === 'start' && p.id === r.host && r.phase === 'lobby') {
+      if (r.players.length < 2 || new Set(r.players.map(x => x.supabaseUserId).filter(Boolean)).size < 2) return err('O leilão valendo XP precisa de pelo menos dois jogadores autenticados em contas diferentes.');
       const sl = slotsOf(r), eras = PACKS.filter(k => r.cfg.packs.includes(k.id)).map(k => k.era), pool0 = POOL.filter(x => eras.includes(x[3])),
         bNames = new Set(pool0.filter(x => x[3] === 'B').map(x => x[0])), pool = pool0.filter(x => x[3] === 'B' || !bNames.has(x[0])); // mesma pessoa em dois pacotes: vale a versão do Brasileirão
       for (const pos of Object.keys(sl)) {
@@ -356,11 +397,11 @@ wss.on('connection', (ws, req) => {
       if (!l) return err('O jogador acabou de ser vendido. Aguarde o próximo!');
       const minBid = l.bidder ? l.bid + 1 : floorOf(r, l.r, l);
       if (!(a > 0) || p.id === l.bidder || need(r, p, l.pos) < 1 || a > maxBid(r, p) || a < minBid) return err(`Lance inválido: mínimo € ${minBid}M, máximo € ${maxBid(r, p)}M.`);
-      l.bid = a; l.bidder = p.id; l.hist.push({ bidder: p.id, bid: a }); l.end = Math.max(l.end, Date.now() + RESET_MS); arm(r);
+      l.bid = a; l.bidder = p.id; l.hist.push({ bidder: p.id, bid: a }); p.hasValidBid = true; l.end = Math.max(l.end, Date.now() + RESET_MS); arm(r);
       say(r, `${p.name} dá ${mi(a)} por ${l.n}!`, 'bid');
     }
   };
-  ws.on('message', d => { const now = Date.now(); if (now - win > 1000) { win = now; msgs = 0; } if (++msgs > 30) return ws.close(1008, 'Muitas mensagens'); try { handle(d); } catch (e) { console.error('Erro ao tratar mensagem:', e); } });
+  ws.on('message', d => { const now = Date.now(); if (now - win > 1000) { win = now; msgs = 0; } if (++msgs > 30) return ws.close(1008, 'Muitas mensagens'); Promise.resolve(handle(d)).catch(e => console.error('Erro ao tratar mensagem:', e)); });
   ws.on('close', () => {
     if (!p || !r || p.ws !== ws) return;
     p.ws = null; const room = r, who = p; bc(room);
