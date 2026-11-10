@@ -23,7 +23,7 @@ function publicState(room) {
     ? (room.game.turn() === 'w' ? 'Vitória das pretas por xeque-mate' : 'Vitória das brancas por xeque-mate')
     : room.game.isDraw() ? 'Empate' : null);
   return { type: 'state', code: room.code, phase: room.phase, fen: room.game.fen(), pgn: room.game.pgn(),
-    turn: room.game.turn(), result, lastMove: room.lastMove || null,
+    turn: room.game.turn(), result, drawOfferedBy: room.drawOfferedBy || null, lastMove: room.lastMove || null,
     players: room.players.map(p => ({ id: p.id, name: p.name, color: p.color, online: !!p.ws, authenticated: !!p.userId, wantsRematch: !!p.wantsRematch })) };
 }
 function broadcast(room) { const state = publicState(room); room.players.forEach(p => send(p.ws, state)); }
@@ -85,15 +85,28 @@ async function connect(ws) {
       if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) return fail('Jogada inválida.');
       try {
         const move = room.game.move({ from, to, promotion });
-        player.lastMoveAt = Date.now(); room.lastMove = { from: move.from, to: move.to, san: move.san, color: move.color };
+        player.lastMoveAt = Date.now(); room.lastMove = { from: move.from, to: move.to, san: move.san, color: move.color }; room.drawOfferedBy = null;
         if (room.game.isGameOver()) room.phase = 'finished';
         broadcast(room);
       } catch (_) { return fail('Jogada ilegal. O servidor não aceitou esse movimento.'); }
       return;
     }
+    if (m.type === 'offer_draw') {
+      if (room.phase !== 'playing') return fail('Não há partida em andamento.');
+      if (room.drawOfferedBy) return fail('Já existe uma oferta de empate pendente.');
+      room.drawOfferedBy = player.id; broadcast(room); return;
+    }
+    if (m.type === 'accept_draw') {
+      if (room.phase !== 'playing' || !room.drawOfferedBy || room.drawOfferedBy === player.id) return fail('Não há oferta de empate do adversário.');
+      room.phase = 'finished'; room.result = 'Empate por acordo'; room.drawOfferedBy = null; broadcast(room); return;
+    }
+    if (m.type === 'decline_draw') {
+      if (room.phase !== 'playing' || !room.drawOfferedBy || room.drawOfferedBy === player.id) return fail('Não há oferta de empate do adversário.');
+      room.drawOfferedBy = null; broadcast(room); return;
+    }
     if (m.type === 'resign') {
       if (room.phase !== 'playing') return fail('Não há partida em andamento.');
-      room.phase = 'finished'; room.result = player.color === 'w' ? 'Vitória das pretas por desistência' : 'Vitória das brancas por desistência'; broadcast(room); return;
+      room.phase = 'finished'; room.result = player.color === 'w' ? 'Vitória das pretas por desistência' : 'Vitória das brancas por desistência'; room.drawOfferedBy = null; broadcast(room); return;
     }
     if (m.type === 'rematch') {
       if (room.phase !== 'finished') return fail('A partida ainda não terminou.');
@@ -101,7 +114,7 @@ async function connect(ws) {
       if (room.players.length === 2 && room.players.every(p => p.wantsRematch)) {
         room.players.forEach(p => { p.wantsRematch = false; p.color = p.color === 'w' ? 'b' : 'w'; });
         room.players.sort((a, b) => a.color === 'w' ? -1 : 1);
-        room.game = new Chess(); room.phase = 'playing'; room.lastMove = null; room.result = null;
+        room.game = new Chess(); room.phase = 'playing'; room.lastMove = null; room.result = null; room.drawOfferedBy = null;
       }
       broadcast(room); return;
     }
