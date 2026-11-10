@@ -34,7 +34,7 @@ header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:
 .chat-message.mine .chat-message-body{background:#263a20;color:#eaffdc}
 .chat-compose{display:flex;gap:8px;padding:10px;border-top:1px solid #29372d}.chat-compose input{flex:1;min-width:0;padding:10px;background:#080e0a;color:white;border:1px solid #344338;border-radius:8px;font:inherit;font-size:11px}
 .chat-compose button{border:1px solid var(--lime);border-radius:8px;padding:0 14px;background:var(--lime);color:#101810;font-size:11px;font-weight:900;cursor:pointer}.chat-compose button:disabled{opacity:.4;cursor:not-allowed}
-.chat-footnote{padding:0 11px 9px;color:#77857a;font-size:9px}@media(max-width:560px){.chat-messages{height:155px}.chat-compose button{padding:0 11px}}
+.chat-footnote{padding:0 11px 9px;color:#77857a;font-size:9px}.voice-bar{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #29372d;background:#101812}.voice-status{font-size:10px;color:#a6b0a8;display:flex;align-items:center;gap:7px}.voice-dot{width:7px;height:7px;border-radius:50%;background:#718075}.voice-dot.on{background:#a8ff3f;box-shadow:0 0 9px #a8ff3f88}.voice-actions{display:flex;gap:6px;flex-wrap:wrap}.voice-actions button{border:1px solid #405342;border-radius:8px;padding:7px 10px;background:#17231a;color:#e8efe9;font-size:10px;font-weight:800;cursor:pointer}.voice-actions button.primary{background:#a8ff3f;color:#101810;border-color:#a8ff3f}.voice-actions button:disabled{opacity:.4;cursor:not-allowed}.voice-note{padding:0 12px 9px;color:#77857a;font-size:9px}@media(max-width:560px){.chat-messages{height:155px}.chat-compose button{padding:0 11px}}
 .footer{border-top:1px solid var(--line);padding:20px 0 30px;color:#7e8b81;font-size:11px}
 @media(max-width:850px){.layout{grid-template-columns:1fr}.controls{order:2}.gamepanel{order:1}}@media(max-width:560px){.wrap{width:calc(100% - 22px)}header{height:65px}.brand img{width:38px}nav{gap:10px;font-size:10px}.hero{padding-top:25px}.gamepanel{padding:10px}.arena{padding:5px}.board{border-width:3px}.piece{font-size:clamp(23px,8vw,42px)}.panel{padding:14px}}
 .site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b;position:relative;z-index:30}
@@ -90,7 +90,7 @@ header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:
 <div class="arena"><div class="board" id="board" role="grid" aria-label="Tabuleiro de xadrez"></div></div>
 <div class="moves"><strong>Últimas jogadas:</strong><span id="lastMoves">A partida ainda não começou.</span></div><div class="history" id="history">Movimentos aparecerão aqui.</div>
 <div class="actions"><button class="btn secondary" id="flip">Girar tabuleiro</button><button class="btn secondary" id="hint">Dica de jogada</button></div>
-<div class="chess-chat" id="chessChat" hidden><div class="chess-chat-head"><strong>💬 CHAT DA PARTIDA</strong><small id="chatRoomLabel">Conversa da sala</small></div><div class="chat-messages" id="chatMessages" aria-live="polite"><div class="chat-empty">As mensagens da partida aparecerão aqui.</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="180" autocomplete="off" placeholder="Digite uma mensagem..." aria-label="Mensagem para o adversário"><button type="submit" id="chatSend">Enviar</button></form><div class="chat-footnote">Respeite seu adversário. Mensagens ofensivas podem ser filtradas.</div></div>
+<div class="chess-chat" id="chessChat" hidden><div class="chess-chat-head"><strong>💬 RESENHA CHAT</strong><small id="chatRoomLabel">Conversa da sala</small></div><div class="voice-bar"><div class="voice-status"><span class="voice-dot" id="voiceDot"></span><span id="voiceStatus">Voice desativado · chamada opcional</span></div><div class="voice-actions"><button type="button" class="primary" id="voiceJoin">Entrar na voz</button><button type="button" id="voiceMute" disabled>Silenciar</button><button type="button" id="voiceLeave" disabled>Sair da voz</button></div></div><div class="voice-note">A chamada só começa quando você entrar e autorizar o microfone. Não gravamos o áudio.</div><div class="chat-messages" id="chatMessages" aria-live="polite"><div class="chat-empty">As mensagens da partida aparecerão aqui.</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="180" autocomplete="off" placeholder="Digite uma mensagem..." aria-label="Mensagem para o adversário"><button type="submit" id="chatSend">Enviar</button></form><div class="chat-footnote">Respeite seu adversário. Mensagens ofensivas podem ser filtradas.</div></div>
 </section></main>
 <footer class="footer">Resenha Chess · Um novo jeito de viver a estratégia dentro do Resenha do Fut.</footer>
 </div>
@@ -105,7 +105,7 @@ const values={p:100,n:320,b:330,r:500,q:900,k:20000};
 const files='abcdefgh', ranks='87654321';
 let game=new ChessCtor(),selected=null,legal=[],orientation='w',mode='bot',thinking=false,history=[],lessonStep=0;
 let chessSocket=null,roomCode='',reconnectToken='',playerId='',playerColor=null,onlinePhase='idle',onlinePlayers=[],reconnectAttempts=0;
-let onlineStatus='Crie uma sala ou entre usando um código.',chatMessages=[];
+let onlineStatus='Crie uma sala ou entre usando um código.',chatMessages=[];let voiceRoom=null,voiceMuted=false,voiceConnecting=false;
 const $=id=>document.getElementById(id);
 const clubCode=name=>name.split(/\s+/).map(x=>x[0]).join('').slice(0,3).toUpperCase();
 function renderChat(messages){
@@ -113,6 +113,37 @@ function renderChat(messages){
  if(!list.length){const empty=document.createElement('div');empty.className='chat-empty';empty.textContent='Seja o primeiro a mandar uma mensagem!';box.append(empty);}
  list.forEach(message=>{const item=document.createElement('div');item.className='chat-message'+(message.playerId===playerId?' mine':'');const meta=document.createElement('div');meta.className='chat-message-meta';const name=document.createElement('strong');name.textContent=message.playerId===playerId?'Você':(message.name||'Adversário');const time=document.createElement('span');time.textContent=message.at?new Date(message.at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';const body=document.createElement('div');body.className='chat-message-body';body.textContent=message.text||'';meta.append(name,time);item.append(meta,body);box.append(item);});
  if(wasNearBottom)box.scrollTop=box.scrollHeight;
+}
+function setVoiceStatus(text,active=false){$('voiceStatus').textContent=text;$('voiceDot').classList.toggle('on',!!active);}
+async function leaveVoice(update=true){
+ const current=voiceRoom;voiceRoom=null;voiceMuted=false;voiceConnecting=false;
+ if(current){try{await current.disconnect();}catch(e){}}
+ $('voiceJoin').disabled=onlinePhase!=='playing';$('voiceMute').disabled=true;$('voiceLeave').disabled=true;$('voiceMute').textContent='Silenciar';
+ if(update)setVoiceStatus('Voice desativado · chamada opcional',false);
+}
+async function joinVoice(){
+ if(voiceRoom||voiceConnecting||onlinePhase!=='playing'||!roomCode||!playerId)return;
+ voiceConnecting=true;$('voiceJoin').disabled=true;setVoiceStatus('Preparando chamada…');
+ try{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Seu navegador não oferece acesso ao microfone neste contexto. Use HTTPS.');
+  const response=await fetch('/api/chess-voice/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:roomCode,playerId})});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Não foi possível autorizar a chamada.');
+  const livekit=await import('https://cdn.jsdelivr.net/npm/livekit-client@2.15.6/+esm');
+  const room=new livekit.Room({adaptiveStream:true,dynacast:true});
+  room.on(livekit.RoomEvent.ParticipantConnected,participant=>setVoiceStatus(participant.name+' entrou na voz',true));
+  room.on(livekit.RoomEvent.ParticipantDisconnected,()=>setVoiceStatus('Aguardando o adversário na voz…',true));
+  room.on(livekit.RoomEvent.Disconnected,()=>{if(voiceRoom===room){voiceRoom=null;$('voiceJoin').disabled=onlinePhase!=='playing';$('voiceMute').disabled=true;$('voiceLeave').disabled=true;setVoiceStatus('Chamada desconectada',false);}});
+  await room.connect(data.server_url,data.participant_token);
+  voiceRoom=room;await room.localParticipant.setMicrophoneEnabled(true);voiceConnecting=false;voiceMuted=false;
+  $('voiceJoin').disabled=true;$('voiceMute').disabled=false;$('voiceLeave').disabled=false;
+  setVoiceStatus(room.remoteParticipants.size?Array.from(room.remoteParticipants.values())[0].name+' está na voz':'Você entrou · aguardando o adversário',true);
+ }catch(error){voiceConnecting=false;$('voiceJoin').disabled=onlinePhase!=='playing';setVoiceStatus(error.message||'Falha ao iniciar a chamada',false);}
+}
+async function toggleVoiceMute(){
+ if(!voiceRoom)return;
+ try{voiceMuted=!voiceMuted;await voiceRoom.localParticipant.setMicrophoneEnabled(!voiceMuted);$('voiceMute').textContent=voiceMuted?'Ativar microfone':'Silenciar';setVoiceStatus(voiceMuted?'Microfone silenciado':'Microfone ativado',true);}
+ catch(error){setVoiceStatus('Não foi possível alterar o microfone',false);}
 }
 function showGameNotice(message,type){const el=$('gameNotice');el.textContent=message||'';el.className='game-alert'+(type?' '+type:'');el.hidden=!message;}
 function render(){
@@ -291,7 +322,7 @@ function connectChess(payload){
    else if(onlinePhase==='finished')onlineStatus=data.result||'Partida encerrada. Solicite uma revanche.';
    else if(!opponent||!opponent.online)onlineStatus='Adversário desconectado. Aguardando reconexão…';
    else onlineStatus=game.turn()===playerColor?'Sua vez. Faça sua jogada.':'Vez do adversário — aguardando jogada.';
-   $('onlineStatus').textContent=onlineStatus;$('chessChat').hidden=onlinePhase==='idle';$('chatRoomLabel').textContent='Sala '+roomCode+' · '+(onlinePlayers.length===2?'2 jogadores':'aguardando adversário');$('chatInput').disabled=onlinePhase==='finished';$('chatSend').disabled=onlinePhase==='finished';renderChat(data.chat);const offeredBy=data.drawOfferedBy||null;const ownOffer=onlinePlayers.find(p=>p.id===offeredBy&&p.id===playerId);const offerButton=$('offerDraw');offerButton.disabled=onlinePhase!=='playing'||!!ownOffer;offerButton.textContent=offeredBy&&!ownOffer?'Aceitar empate':'Oferecer empate';offerButton.dataset.action=offeredBy&&!ownOffer?'accept':'offer';$('resign').disabled=onlinePhase!=='playing';$('rematch').disabled=onlinePhase!=='finished';if(onlinePhase==='finished')showGameNotice(data.result||'Partida encerrada.','success');else if(onlinePhase==='waiting')showGameNotice('Sala criada. Aguardando o segundo jogador.','info');else if(!opponent||!opponent.online)showGameNotice('Seu adversário perdeu a conexão. Aguardando a reconexão…');else if(offeredBy)showGameNotice(offeredBy===playerId?'Você ofereceu empate. Aguardando a resposta do adversário.':'Seu adversário ofereceu empate. Você pode aceitar a proposta no painel Online.');else showGameNotice('');render();
+   $('onlineStatus').textContent=onlineStatus;$('chessChat').hidden=onlinePhase==='idle';$('chatRoomLabel').textContent='Sala '+roomCode+' · '+(onlinePlayers.length===2?'2 jogadores':'aguardando adversário');$('chatInput').disabled=onlinePhase==='finished';$('chatSend').disabled=onlinePhase==='finished';$('voiceJoin').disabled=onlinePhase!=='playing'||!!voiceRoom||voiceConnecting; if(onlinePhase!=='playing'&&voiceRoom)leaveVoice();renderChat(data.chat);const offeredBy=data.drawOfferedBy||null;const ownOffer=onlinePlayers.find(p=>p.id===offeredBy&&p.id===playerId);const offerButton=$('offerDraw');offerButton.disabled=onlinePhase!=='playing'||!!ownOffer;offerButton.textContent=offeredBy&&!ownOffer?'Aceitar empate':'Oferecer empate';offerButton.dataset.action=offeredBy&&!ownOffer?'accept':'offer';$('resign').disabled=onlinePhase!=='playing';$('rematch').disabled=onlinePhase!=='finished';if(onlinePhase==='finished')showGameNotice(data.result||'Partida encerrada.','success');else if(onlinePhase==='waiting')showGameNotice('Sala criada. Aguardando o segundo jogador.','info');else if(!opponent||!opponent.online)showGameNotice('Seu adversário perdeu a conexão. Aguardando a reconexão…');else if(offeredBy)showGameNotice(offeredBy===playerId?'Você ofereceu empate. Aguardando a resposta do adversário.':'Seu adversário ofereceu empate. Você pode aceitar a proposta no painel Online.');else showGameNotice('');render();
   }else if(data.type==='chat_message'){if(data.message){chatMessages.push(data.message);if(chatMessages.length>50)chatMessages.shift();renderChat(chatMessages);}}
   else if(data.type==='error'){setOnlineStatus(data.message||'Não foi possível completar a ação.');}
   else if(data.type==='room_closed'){showGameNotice(data.reason||'A sala foi encerrada.','success');clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;$('chessChat').hidden=true;setOnlineStatus(data.reason||'A sala foi encerrada.');}
@@ -316,7 +347,8 @@ $('joinRoom').addEventListener('click',()=>{
 $('copyRoom').addEventListener('click',async()=>{
  if(!roomCode)return;try{await navigator.clipboard.writeText(roomCode);setOnlineStatus('Código '+roomCode+' copiado. Envie ao seu adversário.');}catch(e){$('roomCodeInput').select();setOnlineStatus('Selecione e copie o código da sala.');}
 });
-$('leaveRoom').addEventListener('click',()=>{sendChess({type:'leave'});if(chessSocket)chessSocket.close();chessSocket=null;clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;$('rematch').disabled=true;$('chessChat').hidden=true;setOnlineStatus('Você saiu da sala.');});
+$('leaveRoom').addEventListener('click',()=>{sendChess({type:'leave'});if(chessSocket)chessSocket.close();chessSocket=null;clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;$('rematch').disabled=true;$('chessChat').hidden=true;leaveVoice();setOnlineStatus('Você saiu da sala.');});
+$('voiceJoin').addEventListener('click',joinVoice);$('voiceMute').addEventListener('click',toggleVoiceMute);$('voiceLeave').addEventListener('click',()=>leaveVoice());
 $('chatForm').addEventListener('submit',event=>{event.preventDefault();const text=$('chatInput').value.trim();if(!text||!chessSocket||chessSocket.readyState!==1||onlinePhase==='finished')return;sendChess({type:'chat',text});$('chatInput').value='';$('chatInput').focus();});
 $('offerDraw').addEventListener('click',()=>{const action=$('offerDraw').dataset.action||'offer';sendChess({type:action==='accept'?'accept_draw':'offer_draw'});$('offerDraw').disabled=true;setOnlineStatus(action==='accept'?'Aceitando o empate…':'Oferta de empate enviada ao adversário.');});
 $('resign').addEventListener('click',()=>{if(!confirm('Tem certeza de que deseja desistir da partida?'))return;sendChess({type:'resign'});$('resign').disabled=true;});
@@ -324,7 +356,7 @@ $('rematch').addEventListener('click',()=>{sendChess({type:'rematch'});$('rematc
 function newGame(){showGameNotice('');game=new ChessCtor();selected=null;legal=[];history=[];lessonStep=0;thinking=false;orientation='w';$('modeInfo').textContent=mode==='training'?'Treinamento: vamos começar pelo centro. Tente jogar e2 para e4.':'Você joga com as peças claras. Selecione uma peça e depois a casa de destino.';render();}
 document.querySelectorAll('.mode').forEach(btn=>btn.addEventListener('click',()=>{
  const nextMode=btn.dataset.mode;
- if(mode==='online'&&nextMode!=='online'&&chessSocket){chessSocket.close();chessSocket=null;}
+ if(mode==='online'&&nextMode!=='online'&&chessSocket){leaveVoice();chessSocket.close();chessSocket=null;}
  mode=nextMode;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('active',x===btn));$('onlineControls').style.display=mode==='online'?'block':'none';$('onlineControls').closest('.controls').classList.toggle('online-active',mode==='online');
  $('difficultyField').style.display=mode==='bot'?'block':'none';
  const resenhaStyle=document.body.dataset.chessStyle==='resenha';$('boardTitle').textContent=mode==='online'?(resenhaStyle?'Resenha Chess · Online':'Chess Clássico · Online'):mode==='training'?(resenhaStyle?'Resenha Chess · Treinamento':'Chess Clássico · Treinamento'):resenhaStyle?$('stadium').value+' · Resenha Chess':'Chess Clássico';
