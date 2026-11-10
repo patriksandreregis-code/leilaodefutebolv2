@@ -2,6 +2,9 @@
 const crypto = require('crypto');
 const { Chess } = require('chess.js');
 const rooms = new Map();
+const CHAT_BAD = new Set('porra caralho carai merda bosta foda foder fodido fodida fodase puta puto putaria fdp vsf vtnc tnc pqp cu cuzao buceta viado viada otario otaria idiota imbecil babaca arrombado arrombada corno corna escroto escrota vagabundo vagabunda cacete piranha vadia retardado mongol desgracado'.split(' '));
+function normalizeChatWord(word) { return word.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[@4]/g,'a').replace(/3/g,'e').replace(/1/g,'i').replace(/0/g,'o').replace(/[$5]/g,'s').replace(/(.)\\1+/g,'$1'); }
+function cleanChatText(value) { return String(value || '').replace(/[\\p{L}\\p{N}@$]+/gu, word => CHAT_BAD.has(normalizeChatWord(word)) ? '*'.repeat(Math.max(3, word.length)) : word).trim().slice(0, 180); }
 const playerRooms = new WeakMap();
 const send = (ws, data) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(data)); };
 const cleanName = value => String(value || 'Jogador').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'Jogador';
@@ -22,7 +25,7 @@ function publicState(room) {
   const result = room.result || (room.game.isCheckmate()
     ? (room.game.turn() === 'w' ? 'Vitória das pretas por xeque-mate' : 'Vitória das brancas por xeque-mate')
     : room.game.isDraw() ? 'Empate' : null);
-  return { type: 'state', code: room.code, phase: room.phase, fen: room.game.fen(), pgn: room.game.pgn(),
+  return { type: 'state', code: room.code, phase: room.phase, fen: room.game.fen(), pgn: room.game.pgn(), chat: room.chat || [],
     turn: room.game.turn(), result, drawOfferedBy: room.drawOfferedBy || null, lastMove: room.lastMove || null,
     players: room.players.map(p => ({ id: p.id, name: p.name, color: p.color, online: !!p.ws, authenticated: !!p.userId, wantsRematch: !!p.wantsRematch })) };
 }
@@ -52,7 +55,7 @@ async function connect(ws) {
       if (m.type === 'create') {
         if (rooms.size >= 200) return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         let code = makeCode(); while (rooms.has(code)) code = makeCode();
-        const room = { code, phase: 'waiting', game: new Chess(), players: [], createdAt: Date.now(), lastActivity: Date.now(), lastMove: null, result: null, expiry: null, maxAgeTimer: null, closed: false };
+        const room = { code, phase: 'waiting', game: new Chess(), players: [], chat: [], createdAt: Date.now(), lastActivity: Date.now(), lastMove: null, result: null, expiry: null, maxAgeTimer: null, closed: false };
         rooms.set(code, room); room.maxAgeTimer = setTimeout(() => closeRoom(room, 'A sala expirou após três horas.'), 3 * 60 * 60 * 1000); addPlayer(room, ws, { name, user }, 'w');
         send(ws, { type: 'room_created', code, message: 'Sala criada. Compartilhe o código com seu adversário.' }); broadcast(room); return;
       }
@@ -77,6 +80,19 @@ async function connect(ws) {
     const { room, player } = membership;
     if (room.closed || !room.players.includes(player)) return fail('Essa sala não está mais disponível.');
     room.lastActivity = Date.now();
+    if (m.type === 'chat') {
+      if (room.phase === 'finished') return fail('A conversa desta partida foi encerrada.');
+      const now = Date.now(), message = cleanChatText(m.text);
+      if (!message) return;
+      if (String(m.text || '').trim().length > 180) return fail('A mensagem deve ter no máximo 180 caracteres.');
+      if (now - (player.lastChatAt || 0) < 700) return fail('Aguarde um instante antes de enviar outra mensagem.');
+      player.lastChatAt = now;
+      room.chat = room.chat || [];
+      room.chat.push({ id: crypto.randomBytes(6).toString('hex'), playerId: player.id, name: player.name, text: message, at: now });
+      if (room.chat.length > 50) room.chat.splice(0, room.chat.length - 50);
+      broadcast(room);
+      return;
+    }
     if (m.type === 'move') {
       if (room.phase !== 'playing') return fail('A partida ainda não começou.');
       if (room.game.turn() !== player.color) return fail('Não é a sua vez.');
