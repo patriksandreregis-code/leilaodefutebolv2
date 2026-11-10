@@ -55,7 +55,7 @@ async function awardAuctionXP(r) {
   }
   const eligible = r.players.filter(p => p.supabaseUserId && p.hasValidBid);
   if (eligible.length < 2 || new Set(eligible.map(p => p.supabaseUserId)).size < 2) return;
-  const champion = [...r.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
+  const champion = eligible.slice().sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
   const base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
   const headers = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' };
   for (const p of eligible) {
