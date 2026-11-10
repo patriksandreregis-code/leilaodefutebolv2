@@ -26,7 +26,7 @@ async function verifyUser(accessToken) {
 async function recordCompetitiveResult(room) {
   if (room.resultRecorded || room.players.length !== 2) return;
   const [a, b] = room.players;
-  if (!a.userId || !b.userId || a.userId === b.userId || a.club === b.club) return;
+  if (!a.userId || !b.userId || a.userId === b.userId) return;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const baseUrl = process.env.SUPABASE_URL;
   if (!secret || !baseUrl) { console.warn('[Resenha Chess] Supabase service key ausente; resultado não pontuado.'); return; }
@@ -48,8 +48,10 @@ async function recordCompetitiveResult(room) {
   const headers = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' };
   const rest = baseUrl.replace(/\/$/, '') + '/rest/v1/';
   try {
-    const clubResponse = await fetch(rest + 'chess_club_results', { method: 'POST', headers, body: JSON.stringify(players) });
-    if (!clubResponse.ok) throw new Error('chess_club_results HTTP ' + clubResponse.status + ': ' + (await clubResponse.text()).slice(0, 250));
+    if (a.club !== b.club) {
+      const clubResponse = await fetch(rest + 'chess_club_results', { method: 'POST', headers, body: JSON.stringify(players) });
+      if (!clubResponse.ok) throw new Error('chess_club_results HTTP ' + clubResponse.status + ': ' + (await clubResponse.text()).slice(0, 250));
+    }
     for (const p of [a, b]) {
       const resultCode = draw ? 'draw' : p === winner ? 'win' : 'loss';
       const xp = 10 + (resultCode === 'win' ? 10 : 0);
