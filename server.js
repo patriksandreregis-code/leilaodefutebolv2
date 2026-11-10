@@ -444,7 +444,7 @@ const server = http.createServer(async (q, s) => {
   if (pth === '/robots.txt') { s.writeHead(200, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end(`User-agent: *\nAllow: /\nDisallow: /manager-teste\nDisallow: /*?sala=\n\nSitemap: ${site}/sitemap.xml\n`); }
   if (pth === '/sitemap.xml') {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
-    return s.end('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ['/', '/leilao', '/dado', '/selecoes', '/beatball', '/jogos/leilao-de-futebol', '/jogos/dado-da-copa', '/jogos/resenha-ball', '/jogos/resenha-manager', '/jogos/resenha-x', '/resenha-x', '/plataforma', '/sobre', '/conta', '/ranking'].map(u => `<url><loc>${site}${u}</loc></url>`).join('') + '</urlset>');
+    return s.end('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ['/', '/leilao', '/dado', '/selecoes', '/beatball', '/jogos/leilao-de-futebol', '/jogos/dado-da-copa', '/jogos/resenha-ball', '/jogos/resenha-manager', '/jogos/resenha-x', '/jogos/resenha-scout', '/scout', '/resenha-x', '/plataforma', '/sobre', '/conta', '/ranking'].map(u => `<url><loc>${site}${u}</loc></url>`).join('') + '</urlset>');
   }
   const clubLogoMatch = pth.match(/^\/club-logos\/(\d+)\.png$/);
   if (clubLogoMatch && q.method === 'GET') {
