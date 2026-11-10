@@ -262,11 +262,11 @@ const server = http.createServer(async (q, s) => {
           if (!challenge) throw new Error('Desafio diário indisponível.');
           let session = null;
           if (user) {
-            const existing = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded&user_id=eq.' + user.id + '&challenge_date=eq.' + date + '&limit=1', { headers });
+            const existing = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded,clues_revealed&user_id=eq.' + user.id + '&challenge_date=eq.' + date + '&limit=1', { headers });
             const rows = await existing.json();
             session = rows[0] || null;
           } else if (body.sessionId && body.accessKey) {
-            const guestExisting = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded&user_id=is.null&id=eq.' + encodeURIComponent(String(body.sessionId)) + '&access_token=eq.' + encodeURIComponent(String(body.accessKey)) + '&challenge_date=eq.' + date, { headers });
+            const guestExisting = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded,clues_revealed&user_id=is.null&id=eq.' + encodeURIComponent(String(body.sessionId)) + '&access_token=eq.' + encodeURIComponent(String(body.accessKey)) + '&challenge_date=eq.' + date, { headers });
             const guestRows = await guestExisting.json();
             session = guestRows[0] || null;
           }
