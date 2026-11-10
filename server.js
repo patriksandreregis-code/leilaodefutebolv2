@@ -220,7 +220,7 @@ function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores le
   return Object.keys(g).sort((a, b) => a.localeCompare(b, 'pt')).map(n => `<details><summary>${escH(n)} <span>${g[n].map(x => x.y).sort().join(' · ')}</span></summary>` +
     g[n].sort((a, b) => a.y - b.y).map(x => `<h3>Copa ${x.y}</h3>` + x.p.map(p => `<span class="chip">${escH(p[0])} <b>${p[2]}</b> <span class="mu">${p[1]}</span></span>`).join('')).join('') + '</details>').join('');
 }
-const server = http.createServer((q, s) => {
+const server = http.createServer(async (q, s) => {
   const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
   if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
   if (pth === '/api/config/supabase' && q.method === 'GET') {
