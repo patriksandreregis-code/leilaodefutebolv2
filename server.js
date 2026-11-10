@@ -208,7 +208,7 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js' };
+const FILES = { '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js', '/scout': 'resenha-scout.html', '/jogos/resenha-scout': 'jogos/resenha-scout.html' };
 const SEC = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=()',
@@ -228,6 +228,77 @@ const server = http.createServer(async (q, s) => {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return s.end(JSON.stringify({ configured, url: configured ? process.env.SUPABASE_URL : null, publishableKey: configured ? process.env.SUPABASE_PUBLISHABLE_KEY : null }));
   }
+
+  if ((pth === '/api/scout/start' || pth === '/api/scout/guess') && q.method === 'POST') {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    let raw = '', tooLarge = false;
+    q.on('data', chunk => { if (raw.length + chunk.length > 6000) tooLarge = true; else raw += chunk; });
+    q.on('end', async () => {
+      if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
+      let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!secret || !process.env.SUPABASE_URL) return sendJson(503, { error: 'O Resenha Scout ainda não está conectado ao banco.' });
+      const base = process.env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/';
+      const headers = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json' };
+      try {
+        const accessToken = String(body.accessToken || '');
+        const user = accessToken ? await verifyAuctionUser(accessToken) : null;
+        if (accessToken && !user) return sendJson(401, { error: 'Sua sessão expirou. Entre novamente na sua conta.' });
+        const dateParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+        const dateValues = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
+        const date = dateValues.year + '-' + dateValues.month + '-' + dateValues.day;
+
+        if (pth === '/api/scout/start') {
+          const playersResponse = await fetch(base + 'scout_players?select=id&active=eq.true&order=id.asc', { headers });
+          if (!playersResponse.ok) throw new Error('Não foi possível carregar a base de jogadores: ' + (await playersResponse.text()).slice(0,200));
+          const players = await playersResponse.json();
+          if (!players.length) return sendJson(503, { error: 'A base de jogadores ainda não foi preenchida.' });
+          const dayHash = crypto.createHash('sha256').update('resenha-scout:' + date).digest();
+          const selected = players[dayHash.readUInt32BE(0) % players.length].id;
+          const dailyWrite = await fetch(base + 'scout_daily_challenges', { method: 'POST', headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ challenge_date: date, player_id: selected }) });
+          if (!dailyWrite.ok) throw new Error('Não foi possível preparar o desafio diário: ' + (await dailyWrite.text()).slice(0,200));
+          const challengeResponse = await fetch(base + 'scout_daily_challenges?select=player_id&challenge_date=eq.' + date, { headers });
+          const challenge = (await challengeResponse.json())[0];
+          if (!challenge) throw new Error('Desafio diário indisponível.');
+          let session = null;
+          if (user) {
+            const existing = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded&user_id=eq.' + user.id + '&challenge_date=eq.' + date + '&limit=1', { headers });
+            const rows = await existing.json();
+            session = rows[0] || null;
+          }
+          if (!session) {
+            const created = await fetch(base + 'scout_sessions?select=id,access_token,guesses,attempts,finished,won,xp_awarded', { method: 'POST', headers: { ...headers, Prefer: 'return=representation' }, body: JSON.stringify({ challenge_date: date, player_id: challenge.player_id, user_id: user ? user.id : null }) });
+            if (!created.ok) throw new Error('Não foi possível iniciar a sessão: ' + (await created.text()).slice(0,200));
+            session = (await created.json())[0];
+          }
+          const playerResponse = await fetch(base + 'scout_players?select=clues& id=eq.' + challenge.player_id, { headers });
+          let firstClue = 'A primeira pista está pronta.';
+          if (playerResponse.ok) { const playerRows = await playerResponse.json(); if (playerRows[0]) firstClue = playerRows[0].clues[0]; }
+          return sendJson(200, { date, sessionId: session.id, accessKey: session.access_token, attempts: session.attempts, guesses: session.guesses, finished: session.finished, won: session.won, xp: session.xp_awarded, clue: firstClue, loggedIn: !!user });
+        }
+
+        const sessionId = String(body.sessionId || '');
+        const accessKey = String(body.accessKey || '');
+        const guess = String(body.guess || '').trim().slice(0,80);
+        if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(accessKey) || !guess) return sendJson(400, { error: 'Palpite ou sessão inválida.' });
+        const sessionResponse = await fetch(base + 'scout_sessions?select=id,user_id,access_token& id=eq.' + sessionId + '&access_token=eq.' + accessKey, { headers });
+        if (!sessionResponse.ok) throw new Error('Não foi possível validar sua sessão.');
+        const sessionRows = await sessionResponse.json();
+        if (!sessionRows[0]) return sendJson(403, { error: 'Sessão inválida. Inicie o desafio novamente.' });
+        if (user && sessionRows[0].user_id !== user.id) return sendJson(403, { error: 'Esta sessão não pertence à sua conta.' });
+        if (!user && sessionRows[0].user_id) return sendJson(401, { error: 'Entre na conta usada para iniciar este desafio.' });
+        const resultResponse = await fetch(base + 'rpc/scout_submit_guess', { method: 'POST', headers, body: JSON.stringify({ p_session_id: sessionId, p_guess: guess, p_user_id: user ? user.id : null }) });
+        const result = await resultResponse.json().catch(() => ({}));
+        if (!resultResponse.ok) return sendJson(400, { error: result.message || 'Não foi possível validar esse palpite.' });
+        return sendJson(200, result);
+      } catch (e) {
+        console.error('[Scout] Erro:', e.message);
+        return sendJson(500, { error: 'Ocorreu um erro ao processar o desafio. Tente novamente.' });
+      }
+    });
+    return;
+  }
+
   if (pth === '/api/dado/complete' && q.method === 'POST') {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     let raw = '', tooLarge = false;
