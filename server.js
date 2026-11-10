@@ -309,6 +309,29 @@ const server = http.createServer((q, s) => {
     });
     return;
   }
+  if (pth === '/api/chess-voice/token' && q.method === 'POST') {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    let raw = '', tooLarge = false;
+    q.on('data', chunk => { if (raw.length + chunk.length > 4096) tooLarge = true; else raw += chunk; });
+    q.on('end', async () => {
+      if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
+      let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const participant = chessServer.getVoiceParticipant(body.code, body.playerId);
+      if (!participant) return sendJson(403, { error: 'Entre em uma partida online com os dois jogadores conectados antes de ativar o Voice.' });
+      if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
+      try {
+        const voiceRoom = 'chess-' + participant.code.toLowerCase();
+        const token = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, { identity: participant.id, name: participant.name, ttl: '10m' });
+        token.addGrant({ roomJoin: true, room: voiceRoom, canPublish: true, canSubscribe: true });
+        const participantToken = await token.toJwt();
+        return sendJson(200, { server_url: process.env.LIVEKIT_URL, participant_token: participantToken, room: voiceRoom });
+      } catch (e) {
+        console.error('[Resenha Chess] Erro ao gerar token Voice:', e.message);
+        return sendJson(500, { error: 'Não foi possível preparar a chamada de voz.' });
+      }
+    });
+    return;
+  }
   if (pth === '/api/resenha-voice/token' && q.method === 'POST') {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     let raw = '', tooLarge = false;
