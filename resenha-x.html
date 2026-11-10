@@ -41,11 +41,11 @@ header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:
 </section></main>
 <footer class="footer">Resenha X · Um novo jeito de viver a estratégia dentro do Resenha do Fut.</footer>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/cjs/chess.js"></script>
-<script>
+<script type="module">
+import { Chess } from "https://cdn.jsdelivr.net/npm/chess.js@1.4.0/+esm";
 (() => {
 'use strict';
-const ChessCtor = window.Chess || (window.chessjs && window.chessjs.Chess);
+const ChessCtor = Chess;
 if(!ChessCtor){document.getElementById('status').textContent='Não foi possível carregar as regras do xadrez. Atualize a página.';return;}
 const glyph={wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟'};
 const values={p:100,n:320,b:330,r:500,q:900,k:20000};
