@@ -14,7 +14,7 @@ async function verifyBallUser(accessToken){
 async function awardMatchXP(r){
  if(r.xpAwarded||!r.matchId||Date.now()-r.matchStartedAt<30000)return;
  const players=[...r.players.values()];
- const authenticated=players.filter(p=>p.userId&&r.matchUserIds&&r.matchUserIds.has(p.userId));
+ const authenticated=players.filter(p=>p.userId&&r.matchUserIds&&r.matchUserIds.has(p.userId)&&(p.activeMs||0)>=5000);
  if(authenticated.length<2||new Set(authenticated.map(p=>p.userId)).size<2||!authenticated.some(a=>authenticated.some(b=>a.team!==b.team&&a.userId!==b.userId))){for(const p of players)send(p.ws,{type:'xp',awarded:false,reason:'eligible_opponents'});return;}
  r.xpAwarded=true;
  const secret=process.env.SUPABASE_SECRET_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -35,7 +35,7 @@ function bc(r){const s=view(r);for(const p of r.players.values())send(p.ws,s);}
 function reset(r){r.score=[0,0];r.time=r.duration;r.goalStats=new Map();r.lastGoal=null;r.lastTouch=null;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;p.kickAt=0;}}
 function fillBots(r){r.bots=[];const counts=[0,0];for(const p of r.players.values())counts[p.team]++;const target=Math.max(2,counts[0],counts[1]);for(let team=0;team<2;team++){while(counts[team]<target){const slot=counts[team]++;r.bots.push({id:'bot-'+team+'-'+slot,name:'BOT '+(slot+1),team,x:team?740:260,y:180+slot*80,vx:0,vy:0,kickAt:0,bot:true});}}}
 function create(duration){let c=code();while(rooms.has(c))c=code();const r={code:c,host:null,phase:'lobby',players:new Map(),bots:[],score:[0,0],goalStats:new Map(),lastGoal:null,lastTouch:null,duration:[60,90,180,300].includes(+duration)?+duration:90,time:90,ball:{x:500,y:300,vx:0,vy:0},last:Date.now(),timer:null};rooms.set(c,r);return r;}
-function start(r){if(r.players.size<1)return false;fillBots(r);r.phase='playing';reset(r);r.matchId=crypto.randomBytes(16).toString('hex');r.matchStartedAt=Date.now();r.matchUserIds=new Set([...r.players.values()].filter(p=>p.userId).map(p=>p.userId));r.xpAwarded=false;r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
+function start(r){if(r.players.size<1)return false;fillBots(r);r.phase='playing';reset(r);r.matchId=crypto.randomBytes(16).toString('hex');r.matchStartedAt=Date.now();r.matchUserIds=new Set([...r.players.values()].filter(p=>p.userId).map(p=>p.userId));r.players.forEach(p=>p.activeMs=0);r.xpAwarded=false;r.last=Date.now();r.timer=setInterval(()=>tick(r),33);bc(r);return true;}
 function finish(r){if(r.phase==='finished')return;r.phase='finished';clearInterval(r.timer);r.timer=null;bc(r);awardMatchXP(r).catch(e=>console.error('[Resenha Ball XP]',e));}
 function goal(r,t){r.score[t]++;const touch=r.lastTouch&&Date.now()-r.lastTouch.at<8000?r.lastTouch:null;if(touch&&touch.team===t){const old=r.goalStats.get(touch.id)||{id:touch.id,name:touch.name,team:touch.team,bot:!!touch.bot,goals:0};old.goals++;r.goalStats.set(touch.id,old);r.lastGoal={name:touch.name,team:touch.team,bot:!!touch.bot};}else r.lastGoal={name:'Gol sem autor identificado',team:t,bot:false};r.lastTouch=null;r.ball={x:500,y:300,vx:0,vy:0};for(const p of [...r.players.values(),...r.bots]){p.x=p.team?740:260;p.y=150+Math.random()*300;}if(r.phase==='golden_goal')finish(r);bc(r);}
 function tick(r){if(r.phase!=='playing'&&r.phase!=='golden_goal')return;const now=Date.now(),dt=clamp((now-r.last)/1000,0,.05);r.last=now;if(r.phase==='playing')r.time=Math.max(0,r.time-dt);const b=r.ball;
@@ -49,7 +49,7 @@ for(const p of all){
    else{const slot=teammates.indexOf(p);const homeX=p.team?790-slot*34:210+slot*34,homeY=190+slot*105;const dx=homeX-p.x,dy=homeY-p.y,d=Math.hypot(dx,dy)||1;if(d>12){x=dx/d;y=dy/d;}}
    const distToBall=Math.hypot(b.x-p.x,b.y-p.y);
    if(distToBall<58&&now-p.kickAt>650){kick=true;}
- }else{x=p.input.x;y=p.input.y;kick=p.input.kick;}
+ }else{x=p.input.x;y=p.input.y;kick=p.input.kick;if(Math.abs(x)+Math.abs(y)>0||kick)p.activeMs=(p.activeMs||0)+dt*1000;}
  const d=Math.hypot(x,y)||1;p.vx=x/d*(p.bot?190:230);p.vy=y/d*(p.bot?190:230);
  p.x=clamp(p.x+p.vx*dt,24,976);p.y=clamp(p.y+p.vy*dt,24,576);
  let dx=b.x-p.x,dy=b.y-p.y,dist=Math.hypot(dx,dy);
