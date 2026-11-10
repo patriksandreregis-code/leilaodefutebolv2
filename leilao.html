@@ -151,7 +151,26 @@ details{margin:.3rem 0}summary{cursor:pointer}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+let auctionSupabase = null, auctionSession = null;
+async function loadAuctionAuth() {
+  if (auctionSupabase) {
+    const { data } = await auctionSupabase.auth.getSession();
+    auctionSession = data.session;
+    return auctionSession;
+  }
+  if (!window.supabase || !window.supabase.createClient) throw new Error('Não foi possível carregar o sistema de contas. Atualize a página.');
+  const cfgResponse = await fetch('/api/config/supabase', { cache: 'no-store' });
+  const cfg = await cfgResponse.json();
+  if (!cfg.configured) throw new Error('O sistema de contas ainda não está configurado.');
+  auctionSupabase = window.supabase.createClient(cfg.url, cfg.publishableKey);
+  const { data, error } = await auctionSupabase.auth.getSession();
+  if (error) throw error;
+  auctionSession = data.session;
+  auctionSupabase.auth.onAuthStateChange((_event, session) => { auctionSession = session; });
+  return auctionSession;
+}
 const $ = id => document.getElementById(id);
 const PN = { GK: 'Goleiro', DEF: 'Defensor', MID: 'Meia', ATT: 'Atacante' };
 const ROLE = { GOL: 'Goleiro', ZAG: 'Zagueiro', LD: 'Lateral-direito', LE: 'Lateral-esquerdo', VOL: 'Volante', MC: 'Meio-campista', MEI: 'Meia-atacante', PE: 'Ponta-esquerda', PD: 'Ponta-direita', CA: 'Centroavante' };
@@ -172,12 +191,17 @@ const saved = store.get(); if (saved) { name = saved.name; room = saved.room; to
 function showJoining(msg) { $('join').hidden = true; $('joining').hidden = false; $('joinmsg').textContent = msg; clearTimeout(jt);
   jt = setTimeout(() => { if (!S) $('joinmsg').textContent = 'Acordando o servidor… no plano grátis pode levar até 1 minuto.'; }, 6000); }
 function showJoinForm() { clearTimeout(jt); $('joining').hidden = true; $('join').hidden = false; $('game').hidden = true; }
-function join(create) {
+async function join(create) {
   name = $('name').value.trim(); room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
   token = (saved && saved.room === room && saved.name === name) ? (saved.token || '') : '';
   if (!name || !room) return alert('Informe seu nome e o código da sala.');
-  showJoining('Entrando na sala…');
-  connect();
+  showJoining('Verificando sua conta…');
+  try {
+    const session = await loadAuctionAuth();
+    if (!session || !session.access_token) { showJoinForm(); return alert('Entre na sua conta do Resenha do Fut antes de jogar.'); }
+    if (!session.user.email_confirmed_at) { showJoinForm(); return alert('Confirme seu e-mail antes de participar do Leilão valendo XP.'); }
+    connect();
+  } catch (e) { showJoinForm(); alert(e.message || 'Não foi possível verificar sua conta.'); }
 }
 function kickBtn(b) { if (confirm('Remover ' + b.dataset.name + ' da sala?')) send({ t: 'kick', id: b.dataset.id }); }
 function leave() { leaveAuctionVoice(); store.set(null); location.href = '/leilao'; }
@@ -185,7 +209,7 @@ function connect() {
   if (ws && ws.readyState <= 1) return;
   clearTimeout(retry);
   const w = ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  w.onopen = () => { lastMsg = Date.now(); send({ t: 'join', room, name, token, re: !!(S || saved) }); };
+  w.onopen = async () => { lastMsg = Date.now(); try { const session = await loadAuctionAuth(); if (!session || !session.access_token) { w.close(); showJoinForm(); alert('Sua sessão expirou. Entre novamente na sua conta.'); return; } send({ t: 'join', room, name, token, re: !!(S || saved), accessToken: session.access_token }); } catch (e) { w.close(); showJoinForm(); alert(e.message || 'Falha ao validar sua conta.'); } };
   w.onmessage = e => {
     lastMsg = Date.now();
     const m = JSON.parse(e.data);
