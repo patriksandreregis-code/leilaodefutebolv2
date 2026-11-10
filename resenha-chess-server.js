@@ -69,6 +69,7 @@ async function connect(ws) {
       if (!p) return fail('Não foi possível recuperar a conexão. Crie ou entre em uma sala novamente.');
       if (p.ws) { playerRooms.delete(p.ws); try { p.ws.close(4001, 'Sessão reconectada em outro dispositivo'); } catch (_) {} }
       p.ws = ws; p.disconnectedAt = null; clearTimeout(room.expiry); playerRooms.set(ws, { room, player: p });
+      if (room.players.some(other => !other.ws)) room.expiry = setTimeout(() => { if (room.players.some(other => !other.ws)) closeRoom(room, 'A sala expirou após uma desconexão.'); }, 60000);
       send(ws, { type: 'reconnected', code, playerId: p.id, color: p.color, reconnectToken: p.reconnectToken, name: p.name }); broadcast(room); return;
     }
     const membership = playerRooms.get(ws);
