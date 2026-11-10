@@ -369,6 +369,24 @@ const server = http.createServer((q, s) => {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
     return s.end('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ['/', '/leilao', '/dado', '/selecoes', '/beatball', '/jogos/leilao-de-futebol', '/jogos/dado-da-copa', '/jogos/resenha-ball', '/jogos/resenha-manager', '/jogos/resenha-x', '/resenha-x', '/plataforma', '/sobre', '/conta', '/ranking'].map(u => `<url><loc>${site}${u}</loc></url>`).join('') + '</urlset>');
   }
+  const clubLogoMatch = pth.match(/^\/club-logos\/(\d+)\.png$/);
+  if (clubLogoMatch && q.method === 'GET') {
+    const allowedClubLogoIds = new Set([127,131,121,126,128,133,130,119,135,1065,541,529,50,40,33,157,85,42,49,496]);
+    const teamId = Number(clubLogoMatch[1]);
+    if (!allowedClubLogoIds.has(teamId)) { s.writeHead(404, hdr); return s.end('Not found'); }
+    try {
+      const upstream = await fetch('https://media.api-sports.io/football/teams/' + teamId + '.png', { signal: AbortSignal.timeout(8000) });
+      if (!upstream.ok) { s.writeHead(502, { ...hdr, 'Cache-Control': 'no-store' }); return s.end('Logo indisponível'); }
+      const image = Buffer.from(await upstream.arrayBuffer());
+      const contentType = upstream.headers.get('content-type') || 'image/png';
+      if (!contentType.startsWith('image/')) { s.writeHead(502, hdr); return s.end('Resposta de imagem inválida'); }
+      s.writeHead(200, { ...hdr, 'Content-Type': contentType, 'Cache-Control': 'public, max-age=604800', 'Content-Length': image.length });
+      return s.end(image);
+    } catch (error) {
+      console.error('Falha ao obter escudo do clube ' + teamId + ':', error.message);
+      s.writeHead(502, { ...hdr, 'Cache-Control': 'no-store' }); return s.end('Falha ao obter escudo');
+    }
+  }
   const f = FILES[pth];
   if (!f) { s.writeHead(404, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end('404'); }
   fs.readFile(path.join(__dirname, f), (e, d) => {
