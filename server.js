@@ -316,7 +316,7 @@ const server = http.createServer((q, s) => {
     q.on('end', async () => {
       if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
       let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
-      const participant = chessServer.getVoiceParticipant(body.code, body.playerId);
+      const participant = chessServer.getVoiceParticipant(body.code, body.playerId, body.reconnectToken);
       if (!participant) return sendJson(403, { error: 'Entre em uma partida online com os dois jogadores conectados antes de ativar o Voice.' });
       if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
       try {
