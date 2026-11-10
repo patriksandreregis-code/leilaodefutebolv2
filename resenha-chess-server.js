@@ -7,6 +7,8 @@ function normalizeChatWord(word) { return word.toLowerCase().normalize('NFD').re
 function cleanChatText(value) { return String(value || '').replace(/[\\p{L}\\p{N}@$]+/gu, word => CHAT_BAD.has(normalizeChatWord(word)) ? '*'.repeat(Math.max(3, word.length)) : word).trim().slice(0, 180); }
 const playerRooms = new WeakMap();
 const send = (ws, data) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(data)); };
+const ALLOWED_CLUBS = new Set(['Flamengo','Corinthians','Palmeiras','São Paulo','Santos','Vasco','Grêmio','Internacional','Cruzeiro','Atlético-MG','Real Madrid','Barcelona','Manchester City','Liverpool','Manchester United','Bayern de Munique','PSG','Arsenal','Chelsea','Juventus']);
+const cleanClub = value => { const club=String(value||'Flamengo').trim(); return ALLOWED_CLUBS.has(club)?club:'Flamengo'; };
 const cleanName = value => String(value || 'Jogador').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'Jogador';
 const makeCode = () => crypto.randomBytes(3).toString('hex').toUpperCase();
 const makeToken = () => crypto.randomBytes(24).toString('base64url');
@@ -27,7 +29,7 @@ function publicState(room) {
     : room.game.isDraw() ? 'Empate' : null);
   return { type: 'state', code: room.code, phase: room.phase, fen: room.game.fen(), pgn: room.game.pgn(), chat: room.chat || [],
     turn: room.game.turn(), result, drawOfferedBy: room.drawOfferedBy || null, lastMove: room.lastMove || null,
-    players: room.players.map(p => ({ id: p.id, name: p.name, color: p.color, online: !!p.ws, authenticated: !!p.userId, wantsRematch: !!p.wantsRematch })) };
+    players: room.players.map(p => ({ id: p.id, name: p.name, club: p.club, color: p.color, online: !!p.ws, authenticated: !!p.userId, wantsRematch: !!p.wantsRematch })) };
 }
 function broadcast(room) { const state = publicState(room); room.players.forEach(p => send(p.ws, state)); }
 function closeRoom(room, reason) {
@@ -36,10 +38,10 @@ function closeRoom(room, reason) {
   room.players.forEach(p => { if (p.ws) { playerRooms.delete(p.ws); send(p.ws, { type: 'room_closed', reason }); try { p.ws.close(1000, 'Sala encerrada'); } catch (_) {} } });
 }
 function addPlayer(room, ws, data, color) {
-  const p = { id: crypto.randomBytes(8).toString('hex'), name: cleanName(data.name), color,
+  const p = { id: crypto.randomBytes(8).toString('hex'), name: cleanName(data.name), club: cleanClub(data.club), color,
     userId: data.user ? data.user.id : null, ws, reconnectToken: makeToken(), disconnectedAt: null, lastMoveAt: 0, wantsRematch: false };
   room.players.push(p); playerRooms.set(ws, { room, player: p });
-  send(ws, { type: 'joined', code: room.code, playerId: p.id, color, reconnectToken: p.reconnectToken, name: p.name });
+  send(ws, { type: 'joined', code: room.code, playerId: p.id, color, reconnectToken: p.reconnectToken, name: p.name, club: p.club });
   return p;
 }
 async function connect(ws) {
@@ -56,7 +58,7 @@ async function connect(ws) {
         if (rooms.size >= 200) return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         let code = makeCode(); while (rooms.has(code)) code = makeCode();
         const room = { code, phase: 'waiting', game: new Chess(), players: [], chat: [], createdAt: Date.now(), lastActivity: Date.now(), lastMove: null, result: null, expiry: null, maxAgeTimer: null, closed: false };
-        rooms.set(code, room); room.maxAgeTimer = setTimeout(() => closeRoom(room, 'A sala expirou após três horas.'), 3 * 60 * 60 * 1000); addPlayer(room, ws, { name, user }, 'w');
+        rooms.set(code, room); room.maxAgeTimer = setTimeout(() => closeRoom(room, 'A sala expirou após três horas.'), 3 * 60 * 60 * 1000); addPlayer(room, ws, { name, user, club: m.club }, 'w');
         send(ws, { type: 'room_created', code, message: 'Sala criada. Compartilhe o código com seu adversário.' }); broadcast(room); return;
       }
       const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -64,7 +66,7 @@ async function connect(ws) {
       if (!room || room.closed) return fail('Sala não encontrada. Confira o código.');
       if (room.phase !== 'waiting' || room.players.length >= 2) return fail('Essa sala já está completa ou a partida já começou.');
       if (room.players.some(p => p.userId && user && p.userId === user.id)) return fail('Você não pode jogar contra a mesma conta.');
-      addPlayer(room, ws, { name, user }, 'b'); room.phase = 'playing'; room.lastActivity = Date.now(); clearTimeout(room.expiry); broadcast(room); return;
+      addPlayer(room, ws, { name, user, club: m.club }, 'b'); room.phase = 'playing'; room.lastActivity = Date.now(); clearTimeout(room.expiry); broadcast(room); return;
     }
     if (m.type === 'reconnect') {
       const code = String(m.code || '').toUpperCase().slice(0, 6), room = rooms.get(code);
