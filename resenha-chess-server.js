@@ -26,7 +26,7 @@ async function verifyUser(accessToken) {
 async function recordCompetitiveResult(room) {
   if (room.resultRecorded || room.players.length !== 2) return;
   const [a, b] = room.players;
-  if (!a.userId || !b.userId || a.userId === b.userId) return;
+  if (!a.userId || !b.userId || a.userId === b.userId || a.club === b.club) return;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const baseUrl = process.env.SUPABASE_URL;
   if (!secret || !baseUrl) { console.warn('[Resenha Chess] Supabase service key ausente; resultado não pontuado.'); return; }
