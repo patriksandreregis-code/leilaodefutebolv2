@@ -38,14 +38,25 @@ header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:
 .piece.team-piece.white{color:var(--team-primary)!important;text-shadow:1px 1px 0 var(--team-secondary),-1px -1px 0 #fff,0 2px 4px #0009;filter:drop-shadow(0 2px 2px #0008)}
 .piece.team-piece.black{color:var(--team-secondary)!important;text-shadow:1px 1px 0 var(--team-primary),-1px -1px 0 #fff,0 2px 4px #0009;filter:drop-shadow(0 2px 2px #0008)}
 .crest.club-themed{background:var(--club-primary)!important;color:var(--club-secondary)!important;border:2px solid var(--club-secondary)!important;border-radius:50% 50% 44% 44%!important;box-shadow:inset 0 0 0 2px #ffffff22,0 2px 8px #0006}
-.arena{position:relative;overflow:hidden}
-.arena:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.8;background:radial-gradient(ellipse at 8% 0%,#ffffff38,transparent 24%),radial-gradient(ellipse at 92% 0%,#ffffff30,transparent 25%),linear-gradient(180deg,#ffffff08,transparent 45%);z-index:0}
-.board{position:relative;z-index:1}
-body[data-chess-style="resenha"][data-stadium="maracana"] .arena{background:radial-gradient(ellipse at 50% 0%,#315d3d,#14291b 58%,#080d0b)}
-body[data-chess-style="resenha"][data-stadium="sao-januario"] .arena{background:radial-gradient(ellipse at 50% 0%,#26384d,#111c2a 58%,#080d0b)}
-body[data-chess-style="resenha"][data-stadium="mineirao"] .arena{background:radial-gradient(ellipse at 50% 0%,#244b65,#102331 58%,#080d0b)}
-body[data-chess-style="resenha"][data-stadium="camp-nou"] .arena{background:radial-gradient(ellipse at 50% 0%,#45305e,#20152e 58%,#080d0b)}
-body[data-chess-style="resenha"][data-stadium="santiago-bernabeu"] .arena{background:radial-gradient(ellipse at 50% 0%,#55503a,#28251b 58%,#080d0b)}
+body[data-chess-style="resenha"] .arena{position:relative;isolation:isolate;overflow:hidden;padding:clamp(18px,3vw,34px);border:1px solid #66866a;border-radius:18px;background:radial-gradient(ellipse at 50% 48%,#243c2b 0%,#14231a 58%,#080e0a 100%);box-shadow:inset 0 0 42px #000b,0 14px 35px #0008}
+body[data-chess-style="resenha"] .arena:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.95;background:radial-gradient(ellipse at 8% 12%,#fff8 0 2px,transparent 4px),radial-gradient(ellipse at 92% 12%,#fff8 0 2px,transparent 4px),repeating-linear-gradient(90deg,transparent 0 18px,#d9e7dc0b 19px 21px),repeating-linear-gradient(0deg,#ffffff08 0 3px,transparent 3px 9px),linear-gradient(180deg,#253d2d 0%,#111d15 48%,#253d2d 100%);box-shadow:inset 0 0 0 10px #0a110c,inset 0 0 0 12px #62796855}
+body[data-chess-style="resenha"] .arena:after{content:"";position:absolute;inset:9px;pointer-events:none;z-index:0;opacity:.55;border:1px solid #dce9dd38;border-radius:11px;background:linear-gradient(90deg,#dce9dd08,transparent 18%,transparent 82%,#dce9dd08)}
+body[data-chess-style="resenha"] .board{position:relative;z-index:1;border:5px solid #0b160e;outline:1px solid #b5d0b866;box-shadow:0 12px 32px #000c,0 0 0 5px #182b1d}
+body[data-chess-style="resenha"] .square.light{background-color:#78a95d;background-image:repeating-linear-gradient(115deg,#ffffff09 0 1px,transparent 1px 4px),linear-gradient(135deg,#8cbd70,#6f9d54)}
+body[data-chess-style="resenha"] .square.dark{background-color:#397344;background-image:repeating-linear-gradient(115deg,#0000000b 0 1px,transparent 1px 4px),linear-gradient(135deg,#477f4b,#2e6339)}
+body[data-chess-style="resenha"] .square .coords{color:#f4ffe9;text-shadow:0 1px 2px #102b14;opacity:.9}
+body[data-chess-style="resenha"] .square.selected{box-shadow:inset 0 0 0 4px #f3e66c}
+body[data-chess-style="resenha"] .square.hint:after{background:#eaffd5a8}
+body[data-chess-style="resenha"] .square.capture:after{border-color:#eaffd5bb}
+body[data-chess-style="resenha"] .board:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.16;background:linear-gradient(#f4fff0,#f4fff0) center/1px 100% no-repeat,radial-gradient(circle at center,transparent 0 12%,#f4fff0 12.2% 12.5%,transparent 12.7%),linear-gradient(#f4fff0,#f4fff0) center/100% 1px no-repeat}
+body[data-chess-style="resenha"] .square{z-index:0}
+body[data-chess-style="resenha"] .piece{position:relative;z-index:2}
+body[data-chess-style="resenha"][data-stadium="maracana"] .arena:before{background-color:#183a25;background-image:radial-gradient(ellipse at 50% 0%,#c5e7c733,transparent 45%),repeating-linear-gradient(90deg,#ffffff0b 0 3px,transparent 3px 15px),linear-gradient(180deg,#315c3d,#102016)}
+body[data-chess-style="resenha"][data-stadium="sao-januario"] .arena:before{background-color:#152438;background-image:radial-gradient(ellipse at 50% 0%,#a9c9ed33,transparent 45%),repeating-linear-gradient(90deg,#dceaff12 0 4px,transparent 4px 16px),linear-gradient(180deg,#263d5b,#101b2b)}
+body[data-chess-style="resenha"][data-stadium="mineirao"] .arena:before{background-color:#173044;background-image:radial-gradient(ellipse at 50% 0%,#b7e4f533,transparent 45%),repeating-linear-gradient(90deg,#e5f7ff12 0 3px,transparent 3px 14px),linear-gradient(180deg,#28516a,#101e29)}
+body[data-chess-style="resenha"][data-stadium="allianz-parque"] .arena:before{background-color:#16372a;background-image:radial-gradient(ellipse at 50% 0%,#c8f0d233,transparent 45%),repeating-linear-gradient(90deg,#eafff012 0 2px,transparent 2px 12px),linear-gradient(180deg,#285743,#0d2018)}
+body[data-chess-style="resenha"][data-stadium="neo-quimica-arena"] .arena:before{background-color:#242b32;background-image:radial-gradient(ellipse at 50% 0%,#e2e8ef33,transparent 45%),repeating-linear-gradient(90deg,#ffffff12 0 5px,transparent 5px 17px),linear-gradient(180deg,#454e59,#151b22)}
+@media(max-width:560px){body[data-chess-style="resenha"] .arena{padding:13px 7px}}
 .footer{border-top:1px solid var(--line);padding:20px 0 30px;color:#7e8b81;font-size:11px}
 @media(max-width:850px){.layout{grid-template-columns:1fr}.controls{order:2}.gamepanel{order:1}}@media(max-width:560px){.wrap{width:calc(100% - 22px)}header{height:65px}.brand img{width:38px}nav{gap:10px;font-size:10px}.hero{padding-top:25px}.gamepanel{padding:10px}.arena{padding:5px}.board{border-width:3px}.piece{font-size:clamp(23px,8vw,42px)}.panel{padding:14px}}
 .site-header{width:min(1120px,calc(100% - 40px));height:82px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #26332b;position:relative;z-index:30}
@@ -81,7 +92,7 @@ body[data-chess-style="resenha"][data-stadium="santiago-bernabeu"] .arena{backgr
 <button class="mode" data-mode="online"><strong>⚔️ Online — dois jogadores</strong><small>Salas privadas e partidas com outros torcedores.</small></button>
 <div class="custom-fields" id="customFields"><label class="field"><span>Seu clube</span><select id="club"><optgroup label="Brasil"><option>Flamengo</option><option>Corinthians</option><option>Palmeiras</option><option>São Paulo</option><option>Santos</option><option>Vasco</option><option>Grêmio</option><option>Internacional</option><option>Cruzeiro</option><option>Atlético-MG</option></optgroup><optgroup label="Europa"><option>Real Madrid</option><option>Barcelona</option><option>Manchester City</option><option>Liverpool</option><option>Manchester United</option><option>Bayern de Munique</option><option>PSG</option><option>Arsenal</option><option>Chelsea</option><option>Juventus</option></optgroup></select></label></div>
 <label class="field" id="difficultyField"><span>Dificuldade do bot</span><select id="difficulty"><option value="easy">Fácil</option><option value="medium" selected>Médio</option><option value="hard">Difícil</option></select></label>
-<div class="custom-fields" id="stadiumFields"><label class="field"><span>Estádio</span><select id="stadium"><option>Maracanã</option><option>São Januário</option><option>Mineirão</option><option>Camp Nou</option><option>Santiago Bernabéu</option></select></label>
+<div class="custom-fields" id="stadiumFields"><label class="field"><span>Estádio</span><select id="stadium"><option>Maracanã</option><option>São Januário</option><option>Mineirão</option><option>Allianz Parque</option><option>Neo Química Arena</option></select></label>
 </div><div class="actions"><button class="btn" id="newGame">Nova partida</button><button class="btn secondary" id="undo">Desfazer</button></div>
 <p class="note" id="modeInfo">Você joga com as peças claras. O bot começa com as peças escuras. Selecione uma peça e depois a casa de destino.</p>
 <div class="online" id="onlineControls">
@@ -130,7 +141,7 @@ function clubForColor(color){
  if(mode==='online'){const player=onlinePlayers.find(p=>p.color===color);return player?.club||'Resenha Bot';}
  return color==='w'?$('club').value:'Resenha Bot';
 }
-function applyStadiumTheme(){const value=$('stadium').value;const slug={'Maracanã':'maracana','São Januário':'sao-januario','Mineirão':'mineirao','Camp Nou':'camp-nou','Santiago Bernabéu':'santiago-bernabeu'}[value]||'maracana';document.body.dataset.stadium=slug;}
+function applyStadiumTheme(){const value=$('stadium').value;const slug={'Maracanã':'maracana','São Januário':'sao-januario','Mineirão':'mineirao','Allianz Parque':'allianz-parque','Neo Química Arena':'neo-quimica-arena'}[value]||'maracana';document.body.dataset.stadium=slug;}
 
 function renderChat(messages){
  const box=$('chatMessages');if(!box)return;const list=Array.isArray(messages)?messages:[];chatMessages=list.slice();const wasNearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<45;box.replaceChildren();
