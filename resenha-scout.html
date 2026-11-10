@@ -47,7 +47,7 @@
 <div class="game-top"><div class="date-label">DESAFIO DE HOJE<strong id="challengeDate">Carregando...</strong></div><div class="status-pill" id="loginStatus">MODO CONVIDADO</div></div>
 <div id="loading" class="loading">Preparando o desafio de hoje...</div>
 <div id="game" class="hidden">
-<div class="intro"><h2>SEIS CHANCES. UMA RESPOSTA.</h2><p>Errou? Uma nova pista será revelada. Acerte para somar XP na sua conta.</p></div>
+<div class="intro"><h2>SEIS CHANCES. UMA RESPOSTA.</h2><p>Errou? Uma pista nova aparece a cada palpite errado ou quando você escolhe avançar. Cada ação consome uma tentativa.</p></div>
 <div class="attempts" id="attemptBars"><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span><span class="attempt"></span></div>
 <div class="clue-card"><div class="clue-head"><strong id="clueTitle">Pista 1</strong><span class="clue-count" id="clueCount">6 tentativas disponíveis</span></div><div class="clue-text" id="clueText">...</div></div>
 <div class="hint-actions"><button class="hint-button" id="nextClueButton" type="button">REVELAR PRÓXIMA PISTA ↗</button></div><form class="guess-form" id="guessForm"><input id="guessInput" maxlength="80" autocomplete="off" placeholder="Digite o nome do jogador..." aria-label="Nome do jogador" required><button id="guessButton" type="submit">PALPITAR</button></form>
@@ -58,7 +58,7 @@
 </section>
 <section class="rules">
 <div class="rule"><strong>01 · Um desafio por dia</strong><span>O mesmo jogador misterioso para toda a comunidade, todos os dias.</span></div>
-<div class="rule"><strong>02 · Pistas progressivas</strong><span>Comece com uma pista e receba outra a cada palpite incorreto.</span></div>
+<div class="rule"><strong>02 · Pistas progressivas</strong><span>Palpites errados e pedidos de nova pista consomem uma tentativa.</span></div>
 <div class="rule"><strong>03 · XP para quem tem conta</strong><span>Jogue como visitante ou entre na sua conta para pontuar no ranking.</span></div>
 </section>
 </main>
@@ -71,7 +71,7 @@ const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function datePt(iso){const [y,m,d]=iso.split('-');return d+'/'+m+'/'+y}
 function bars(){const nodes=$('attemptBars').children;for(let i=0;i<6;i++){nodes[i].className='attempt'+(i<guesses.length?(gameState?.won?' used':' failed'):'')}}
-function renderGuesses(){ $('guessList').innerHTML=guesses.map((g,i)=>'<div class="guess-row"><span>'+esc(g)+'</span><small>Tentativa '+(i+1)+'</small></div>').join(''); }
+function renderGuesses(){ $('guessList').innerHTML=guesses.map((g,i)=>{const hint=g==='__HINT__';return '<div class="guess-row"><span>'+(hint?'PRÓXIMA PISTA':esc(g))+'</span><small>'+(hint?'Pista solicitada':'Tentativa '+(i+1))+'</small></div>';}).join(''); }
 function setFeedback(t,kind=''){ $('feedback').textContent=t;$('feedback').className='feedback '+kind; }
 function lockGame(){ $('guessInput').disabled=true;$('guessButton').disabled=true;$('nextClueButton').disabled=true; }\nfunction updateHintButton(){const b=$('nextClueButton');b.disabled=!!gameState?.finished||cluesRevealed>=6;b.textContent=cluesRevealed>=6?'TODAS AS PISTAS REVELADAS':'REVELAR PRÓXIMA PISTA ↗';}
 function showResult(data){
