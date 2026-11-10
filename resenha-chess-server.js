@@ -148,4 +148,5 @@ async function connect(ws) {
     room.expiry = setTimeout(() => { if (room.players.some(p => !p.ws)) closeRoom(room, 'A sala expirou após uma desconexão.'); }, 60000);
   });
 }
-module.exports = { connect };
+function getVoiceParticipant(code, playerId) { const room = rooms.get(String(code || '').toUpperCase()); const player = room && room.players.find(p => p.id === String(playerId || '')); if (!room || room.closed || room.phase !== 'playing' || room.players.length !== 2 || !player || !player.ws || player.ws.readyState !== 1 || room.players.some(p => !p.ws || p.ws.readyState !== 1)) return null; return { id: player.id, name: player.name, code: room.code }; }
+module.exports = { connect, getVoiceParticipant };
