@@ -2,6 +2,12 @@
   "name": "leilao-futebol",
   "version": "1.0.0",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "ws": "^8.18.0", "livekit-server-sdk": "^2.19.2" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "livekit-server-sdk": "^2.19.2",
+    "chess.js": "1.4.0"
+  }
 }
