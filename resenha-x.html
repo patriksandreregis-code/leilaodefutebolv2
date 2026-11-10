@@ -57,7 +57,7 @@ header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:
 <label class="field"><span>Código da sala</span><input id="roomCodeInput" maxlength="6" autocomplete="off" placeholder="Ex.: A1B2C3" style="text-transform:uppercase;letter-spacing:2px;font-weight:900"></label>
 <div class="actions"><button class="btn secondary" id="joinRoom">Entrar na sala</button><button class="btn secondary" id="copyRoom" disabled>Copiar código</button></div>
 <div id="onlineStatus" class="note" aria-live="polite">Crie uma sala e envie o código ao seu adversário, ou entre usando um código recebido.</div>
-<div class="actions"><button class="btn secondary" id="rematch" disabled>Revanche</button><button class="btn secondary" id="leaveRoom" disabled>Sair da sala</button></div>
+<div class="actions"><button class="btn secondary" id="offerDraw" disabled>Oferecer empate</button><button class="btn secondary" id="resign" disabled>Desistir</button></div><div class="actions"><button class="btn secondary" id="rematch" disabled>Revanche</button><button class="btn secondary" id="leaveRoom" disabled>Sair da sala</button></div>
 <p class="note">As jogadas são conferidas pelo servidor. A sala aceita dois jogadores; se alguém cair, terá até 60 segundos para reconectar.</p>
 </div>
 </aside>
@@ -260,7 +260,7 @@ function connectChess(payload){
    else if(onlinePhase==='finished')onlineStatus=data.result||'Partida encerrada. Solicite uma revanche.';
    else if(!opponent||!opponent.online)onlineStatus='Adversário desconectado. Aguardando reconexão…';
    else onlineStatus=game.turn()===playerColor?'Sua vez. Faça sua jogada.':'Vez do adversário — aguardando jogada.';
-   $('onlineStatus').textContent=onlineStatus;$('rematch').disabled=onlinePhase!=='finished';render();
+   $('onlineStatus').textContent=onlineStatus;const offeredBy=data.drawOfferedBy||null;const ownOffer=onlinePlayers.find(p=>p.id===offeredBy&&p.id===playerId);const offerButton=$('offerDraw');offerButton.disabled=onlinePhase!=='playing'||!!ownOffer;offerButton.textContent=offeredBy&&!ownOffer?'Aceitar empate':'Oferecer empate';offerButton.dataset.action=offeredBy&&!ownOffer?'accept':'offer';$('resign').disabled=onlinePhase!=='playing';$('rematch').disabled=onlinePhase!=='finished';render();
   }else if(data.type==='error'){setOnlineStatus(data.message||'Não foi possível completar a ação.');}
   else if(data.type==='room_closed'){clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;setOnlineStatus(data.reason||'A sala foi encerrada.');}
  });
@@ -285,6 +285,8 @@ $('copyRoom').addEventListener('click',async()=>{
  if(!roomCode)return;try{await navigator.clipboard.writeText(roomCode);setOnlineStatus('Código '+roomCode+' copiado. Envie ao seu adversário.');}catch(e){$('roomCodeInput').select();setOnlineStatus('Selecione e copie o código da sala.');}
 });
 $('leaveRoom').addEventListener('click',()=>{sendChess({type:'leave'});if(chessSocket)chessSocket.close();chessSocket=null;clearSavedRoom();roomCode='';playerColor=null;onlinePhase='idle';$('copyRoom').disabled=true;$('leaveRoom').disabled=true;$('rematch').disabled=true;setOnlineStatus('Você saiu da sala.');});
+$('offerDraw').addEventListener('click',()=>{const action=$('offerDraw').dataset.action||'offer';sendChess({type:action==='accept'?'accept_draw':'offer_draw'});$('offerDraw').disabled=true;setOnlineStatus(action==='accept'?'Aceitando o empate…':'Oferta de empate enviada ao adversário.');});
+$('resign').addEventListener('click',()=>{if(!confirm('Tem certeza de que deseja desistir da partida?'))return;sendChess({type:'resign'});$('resign').disabled=true;});
 $('rematch').addEventListener('click',()=>{sendChess({type:'rematch'});$('rematch').disabled=true;setOnlineStatus('Pedido de revanche enviado. Aguardando o adversário.');});
 function newGame(){game=new ChessCtor();selected=null;legal=[];history=[];lessonStep=0;thinking=false;orientation='w';$('modeInfo').textContent=mode==='training'?'Treinamento: vamos começar pelo centro. Tente jogar e2 para e4.':'Você joga com as peças claras. Selecione uma peça e depois a casa de destino.';render();}
 document.querySelectorAll('.mode').forEach(btn=>btn.addEventListener('click',()=>{
