@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d0b">
+<title>Resenha X — Xadrez com identidade de futebol</title>
+<meta name="description" content="Jogue xadrez no Resenha X: desafie bots, treine suas jogadas e prepare-se para enfrentar outros torcedores online.">
+<link rel="icon" href="/favicon-32x32.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#080d0b;--panel:#101713;--panel2:#151e17;--line:#29372d;--text:#f4f6f4;--muted:#a6b0a8;--lime:#a8ff3f;--blue:#83b6ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0%,#a8ff3f12,transparent 35%),var(--bg);color:var(--text);font:14px/1.55 Inter,system-ui,sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1180px,calc(100% - 36px));margin:auto}
+header{height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:11px;font-weight:900}.brand img{width:46px;height:50px;object-fit:contain}.brand span{font:italic 900 21px "Barlow Condensed";color:var(--lime)}nav{display:flex;gap:20px;color:var(--muted);font-size:12px;font-weight:700}nav a:hover{color:var(--lime)}
+.hero{padding:34px 0 22px}.eyebrow{color:var(--lime);font-size:10px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase}.hero h1{font:900 clamp(42px,7vw,68px)/.95 "Barlow Condensed";margin:10px 0}.hero h1 span{color:var(--lime)}.hero p{color:var(--muted);max-width:670px;margin:0}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start;padding:12px 0 54px}.panel{background:linear-gradient(145deg,#151f18,#0e1410);border:1px solid var(--line);border-radius:16px;padding:18px}.panel h2{font-size:15px;margin:0 0 14px}.mode{width:100%;text-align:left;background:#0c130e;color:var(--text);border:1px solid #2a392e;border-radius:11px;padding:12px;margin:5px 0;cursor:pointer}.mode strong{display:block;font-size:13px}.mode small{display:block;color:var(--muted);font-size:11px;margin-top:3px}.mode.active{border-color:var(--lime);background:#1a2817}.field{display:block;margin-top:14px}.field span{display:block;color:#aab5ac;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;margin-bottom:6px}.field select{width:100%;padding:11px;background:#0a100c;color:#f4f6f4;border:1px solid #344338;border-radius:9px;font:inherit}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.btn{border:1px solid var(--lime);background:var(--lime);color:#101810;border-radius:9px;padding:10px 13px;font-weight:900;font-size:12px;cursor:pointer}.btn.secondary{background:#111a14;color:var(--text);border-color:#3b4b3e}.btn:disabled{opacity:.4;cursor:not-allowed}.note{font-size:11px;color:var(--muted);line-height:1.6;margin:13px 0 0}.status{font-size:12px;color:var(--lime);font-weight:800;margin:0 0 12px;min-height:20px}
+.gamepanel{padding:18px}.gamehead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.gamehead h2{margin:0;font-size:17px}.clock{font:800 19px ui-monospace,monospace;background:#080d0b;border:1px solid var(--line);border-radius:8px;padding:6px 10px}.match{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.club{display:flex;align-items:center;gap:9px;font-weight:800}.crest{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#24351e;color:var(--lime);font-size:10px;font-weight:900;border:1px solid #486039}.club small{display:block;color:var(--muted);font-size:10px;font-weight:600}.arena{padding:clamp(10px,2vw,22px);border-radius:15px;border:1px solid #344338;background:radial-gradient(ellipse at center,#203a20,#101b12 65%,#080d0b);box-shadow:inset 0 0 55px #0008}.board{width:min(100%,650px);aspect-ratio:1;margin:auto;display:grid;grid-template-columns:repeat(8,1fr);border:5px solid #18231a;box-shadow:0 14px 35px #0008;user-select:none}.square{position:relative;display:grid;place-items:center;aspect-ratio:1;cursor:pointer;border:0;padding:0}.square.light{background:#e8dfc9}.square.dark{background:#71916a}.square.selected{box-shadow:inset 0 0 0 4px #f4e04d}.square.hint:after{content:"";position:absolute;width:23%;height:23%;border-radius:50%;background:#1a4f2b99}.square.capture:after{content:"";position:absolute;inset:4px;border:4px solid #1a4f2b99;border-radius:50%}.piece{font-family:"Segoe UI Symbol","DejaVu Sans",serif;font-size:clamp(25px,5.4vw,54px);line-height:1;z-index:1;filter:drop-shadow(0 2px 1px #0005)}.piece.white{color:#fffdf4;text-shadow:1px 1px 1px #222,-1px -1px 1px #222}.piece.black{color:#151a16;text-shadow:0 1px 1px #fff8}.coords{position:absolute;font-size:9px;font-weight:900;opacity:.65;left:3px;top:1px;color:#182018}.moves{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:11px}.moves strong{color:var(--text)}.history{max-height:110px;overflow:auto;margin-top:8px;padding:10px;background:#090f0b;border:1px solid #26352a;border-radius:9px;font:11px/1.7 ui-monospace,monospace;color:#c4cec6}.online{margin-top:14px;padding:13px;border:1px dashed #43533f;border-radius:10px;color:#bdc9bf;font-size:11px}.online strong{color:var(--lime)}.footer{border-top:1px solid var(--line);padding:20px 0 30px;color:#7e8b81;font-size:11px}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.controls{order:2}.gamepanel{order:1}}@media(max-width:560px){.wrap{width:calc(100% - 22px)}header{height:65px}.brand img{width:38px}nav{gap:10px;font-size:10px}.hero{padding-top:25px}.gamepanel{padding:10px}.arena{padding:5px}.board{border-width:3px}.piece{font-size:clamp(23px,8vw,42px)}.panel{padding:14px}}
+</style>
+</head>
+<body><div class="wrap">
+<header><a class="brand" href="/"><img src="/logo.png" alt=""><span>RESENHA X</span></a><nav><a href="/">Início</a><a href="/#jogos">Outros jogos</a><a href="/conta">Minha conta</a></nav></header>
+<section class="hero"><div class="eyebrow">♟ Novo jogo · Futebol + estratégia</div><h1>RESENHA <span>X</span></h1><p>O tabuleiro é seu campo. Escolha seu clube, prepare sua estratégia e entre para a resenha. Comece treinando ou desafie a inteligência artificial.</p></section>
+<main class="layout">
+<aside class="panel controls"><h2>Escolha sua partida</h2>
+<button class="mode active" data-mode="bot"><strong>♟ Contra o bot</strong><small>Enfrente a inteligência artificial em três níveis.</small></button>
+<button class="mode" data-mode="training"><strong>🎓 Treinamento</strong><small>Aprenda os movimentos e pratique com orientações.</small></button>
+<button class="mode" data-mode="online"><strong>⚔️ Online — dois jogadores</strong><small>Salas privadas e partidas com outros torcedores.</small></button>
+<label class="field"><span>Seu clube</span><select id="club"><optgroup label="Brasil"><option>Flamengo</option><option>Corinthians</option><option>Palmeiras</option><option>São Paulo</option><option>Santos</option><option>Vasco</option><option>Grêmio</option><option>Internacional</option><option>Cruzeiro</option><option>Atlético-MG</option></optgroup><optgroup label="Europa"><option>Real Madrid</option><option>Barcelona</option><option>Manchester City</option><option>Liverpool</option><option>Manchester United</option><option>Bayern de Munique</option><option>PSG</option><option>Arsenal</option><option>Chelsea</option><option>Juventus</option></optgroup></select></label>
+<label class="field" id="difficultyField"><span>Dificuldade do bot</span><select id="difficulty"><option value="easy">Fácil</option><option value="medium" selected>Médio</option><option value="hard">Difícil</option></select></label>
+<label class="field"><span>Estádio</span><select id="stadium"><option>Maracanã</option><option>São Januário</option><option>Mineirão</option><option>Camp Nou</option><option>Santiago Bernabéu</option></select></label>
+<div class="actions"><button class="btn" id="newGame">Nova partida</button><button class="btn secondary" id="undo">Desfazer</button></div>
+<p class="note" id="modeInfo">Você joga com as peças claras. O bot começa com as peças escuras. Selecione uma peça e depois a casa de destino.</p>
+<div class="online"><strong>Modo online em desenvolvimento.</strong><br>Estamos preparando salas privadas, convites, relógio sincronizado e validação das jogadas no servidor. Nesta primeira versão, as partidas contra bot e o treinamento já podem ser experimentados.</div>
+</aside>
+<section class="panel gamepanel"><div class="gamehead"><h2 id="boardTitle">Partida amistosa</h2><div class="clock" id="clock">∞</div></div>
+<div class="match"><div class="club"><div class="crest" id="yourCrest">FLA</div><div><span id="yourClub">Flamengo</span><small>Você · Brancas</small></div></div><span style="color:#7e8b81;font-weight:900">VS</span><div class="club"><div class="crest" style="background:#182438;color:#9fc6ff;border-color:#365477">BOT</div><div><span>Resenha Bot</span><small id="botLevel">Médio · Pretas</small></div></div></div>
+<div class="status" id="status">Sua vez — brancas.</div>
+<div class="arena"><div class="board" id="board" role="grid" aria-label="Tabuleiro de xadrez"></div></div>
+<div class="moves"><strong>Últimas jogadas:</strong><span id="lastMoves">A partida ainda não começou.</span></div><div class="history" id="history">Movimentos aparecerão aqui.</div>
+<div class="actions"><button class="btn secondary" id="flip">Girar tabuleiro</button><button class="btn secondary" id="hint">Dica de jogada</button></div>
+</section></main>
+<footer class="footer">Resenha X · Um novo jeito de viver a estratégia dentro do Resenha do Fut.</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chess.js@1.4.0/dist/cjs/chess.js"></script>
+<script>
+(() => {
+'use strict';
+const ChessCtor = window.Chess || (window.chessjs && window.chessjs.Chess);
+if(!ChessCtor){document.getElementById('status').textContent='Não foi possível carregar as regras do xadrez. Atualize a página.';return;}
+const glyph={wk:'♔',wq:'♕',wr:'♖',wb:'♗',wn:'♘',wp:'♙',bk:'♚',bq:'♛',br:'♜',bb:'♝',bn:'♞',bp:'♟'};
+const values={p:100,n:320,b:330,r:500,q:900,k:20000};
+const files='abcdefgh', ranks='87654321';
+let game=new ChessCtor(),selected=null,legal=[],orientation='w',mode='bot',thinking=false,history=[],lessonStep=0;
+const $=id=>document.getElementById(id);
+const clubCode=name=>name.split(/\s+/).map(x=>x[0]).join('').slice(0,3).toUpperCase();
+function render(){
+ const board=$('board');board.innerHTML='';const fen=game.board();
+ const rows=orientation==='w'?Array.from({length:8},(_,i)=>i):Array.from({length:8},(_,i)=>7-i);
+ const cols=orientation==='w'?Array.from({length:8},(_,i)=>i):Array.from({length:8},(_,i)=>7-i);
+ rows.forEach((r,ri)=>cols.forEach((c,ci)=>{
+  const sq=files[c]+(8-r),piece=fen[r][c],btn=document.createElement('button');
+  btn.className='square '+((r+c)%2?'dark':'light');btn.dataset.square=sq;btn.setAttribute('role','gridcell');btn.setAttribute('aria-label',sq+(piece?' '+piece.color+' '+piece.type:''));
+  if(selected===sq)btn.classList.add('selected');
+  const moves=legal.filter(m=>m.from===sq);if(moves.length)btn.classList.add(game.get(sq)?'capture':'hint');
+  if(ci===0){const co=document.createElement('span');co.className='coords';co.textContent=8-r;btn.append(co);}
+  if(ri===7){const co=document.createElement('span');co.className='coords';co.style.left='auto';co.style.top='auto';co.style.right='3px';co.style.bottom='1px';co.textContent=files[c];btn.append(co);}
+  if(piece){const el=document.createElement('span');el.className='piece '+(piece.color==='w'?'white':'black');el.textContent=glyph[piece.color+piece.type];btn.append(el);}
+  btn.addEventListener('click',()=>clickSquare(sq));board.append(btn);
+ }));
+ const moves=game.history();$('history').textContent=moves.length?moves.reduce((s,m,i)=>s+(i%2===0?Math.floor(i/2)+1+'. ':'')+m+' ', ''):'Movimentos aparecerão aqui.';
+ $('lastMoves').textContent=moves.length?moves.slice(-4).join(' · '):'A partida ainda não começou.';
+ $('status').textContent=game.isCheckmate()?'XEQUE-MATE! '+(game.turn()==='w'?'Pretas':'Brancas')+' venceram.':game.isDraw()?'Partida empatada.':game.isCheck()?'Xeque! '+(game.turn()==='w'?'Brancas':'Pretas')+' precisam se defender.':thinking?'O bot está pensando…':game.turn()==='w'?'Sua vez — brancas.':'Vez do bot — pretas.';
+ $('undo').disabled=history.length===0||thinking;
+}
+function clickSquare(sq){
+ if(thinking||game.isGameOver()||(mode==='bot'&&game.turn()==='b'))return;
+ if(selected&&legal.some(m=>m.from===selected&&m.to===sq)){
+  const piece=game.get(selected),move=game.move({from:selected,to:sq,promotion:piece.type==='p'&&(sq.endsWith('8')||sq.endsWith('1'))?'q':undefined});
+  if(move){history.push(game.fen());selected=null;legal=[];render();afterHumanMove();}return;
+ }
+ const piece=game.get(sq);if(piece&&piece.color===game.turn()){selected=sq;legal=game.moves({square:sq,verbose:true});}else{selected=null;legal=[];}render();
+}
+function afterHumanMove(){
+ if(game.isGameOver()){finish();return;}
+ if(mode==='training'){trainingFeedback();if(game.turn()==='b')setTimeout(trainingReply,450);return;}
+ if(mode==='bot'&&game.turn()==='b'){thinking=true;render();setTimeout(botMove,350);}
+}
+function finish(){render();$('status').textContent=game.isCheckmate()?'XEQUE-MATE! '+(game.turn()==='w'?'O bot venceu.':'Você venceu!'):game.isDraw()?'Empate! Boa partida.':'Partida encerrada.';}
+function evaluate(g){
+ let score=0;const b=g.board();
+ for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(!p)continue;let v=values[p.type];if(p.type==='p')v+=p.color==='w'?(6-r)*5:(r-1)*5;if(p.type==='n'||p.type==='b')v+=20-Math.abs(3.5-c)*8-Math.abs(3.5-r)*8;score+=(p.color==='b'?v:-v);}
+ return score;
+}
+function chooseBotMove(){
+ const moves=game.moves({verbose:true});if(!moves.length)return null;const level=$('difficulty').value;
+ if(level==='easy')return moves[Math.floor(Math.random()*moves.length)];
+ let scored=moves.map(m=>{const copy=new ChessCtor(game.fen());copy.move(m);return {m,score:evaluate(copy)+(m.captured?values[m.captured]*.15:0)};}).sort((a,b)=>b.score-a.score);
+ if(level==='medium'){const top=scored.slice(0,Math.min(4,scored.length));return top[Math.floor(Math.random()*top.length)].m;}
+ let best=null,bestScore=-Infinity;
+ for(const item of scored.slice(0,14)){const copy=new ChessCtor(game.fen());copy.move(item.m);const replies=copy.moves({verbose:true});let worst=Infinity;
+  for(const reply of replies){const next=new ChessCtor(copy.fen());next.move(reply);worst=Math.min(worst,evaluate(next));}
+  const score=replies.length?worst:evaluate(copy);if(score>bestScore){bestScore=score;best=item.m;}
+ }return best||scored[0].m;
+}
+function botMove(){if(mode!=='bot'||game.turn()!=='b'||game.isGameOver()){thinking=false;render();return;}const move=chooseBotMove();if(move){game.move(move);history.push(game.fen());}thinking=false;selected=null;legal=[];render();if(game.isGameOver())finish();}
+const lessons=[['e2','e4','Comece ocupando o centro. Os peões centrais ajudam a controlar casas importantes.'],['e7','e5','O bot responde disputando o centro.'],['g1','f3','Desenvolva os cavalos: tire as peças de suas casas iniciais.'],['b8','c6','As pretas desenvolvem uma peça e defendem o peão central.']];
+function trainingFeedback(){const m=game.history({verbose:true}).slice(-1)[0];if(!m)return;const found=lessons[lessonStep];if(found&&m.from===found[0]&&m.to===found[1])$('modeInfo').textContent=found[2];else $('modeInfo').textContent='Boa! Observe como suas peças controlam o centro e se protegem. Dica: desenvolva cavalos e bispos antes de atacar.';lessonStep++;}
+function trainingReply(){if(mode!=='training'||game.turn()!=='b'||game.isGameOver())return;const moves=game.moves({verbose:true});const prefer=lessonStep<lessons.length?lessons[lessonStep]:null;let m=prefer?moves.find(x=>x.from===prefer[0]&&x.to===prefer[1]):null;if(!m)m=moves.find(x=>x.piece==='p'&&['e5','d5','c5'].includes(x.to))||moves[Math.floor(Math.random()*moves.length)];if(m)game.move(m);history.push(game.fen());render();if(game.isGameOver())finish();else if(lessonStep<lessons.length)$('modeInfo').textContent=lessons[lessonStep][2];}
+function newGame(){game=new ChessCtor();selected=null;legal=[];history=[];lessonStep=0;thinking=false;orientation='w';$('modeInfo').textContent=mode==='training'?'Treinamento: vamos começar pelo centro. Tente jogar e2 para e4.':'Você joga com as peças claras. Selecione uma peça e depois a casa de destino.';render();}
+document.querySelectorAll('.mode').forEach(btn=>btn.addEventListener('click',()=>{mode=btn.dataset.mode;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('active',x===btn));$('difficultyField').style.display=mode==='bot'?'block':'none';$('boardTitle').textContent=mode==='training'?'Treinamento guiado':mode==='online'?'Modo online':'Partida amistosa';$('modeInfo').textContent=mode==='online'?'O multiplayer online está sendo preparado. Por enquanto, experimente o bot ou o treinamento.':mode==='training'?'Treinamento: vamos começar pelo centro. Tente jogar e2 para e4.':'Você joga com as peças claras. O bot começa com as peças escuras.';newGame();}));
+$('newGame').addEventListener('click',newGame);
+$('undo').addEventListener('click',()=>{if(!history.length||thinking)return;game.undo();if(mode==='bot'&&game.turn()==='b')game.undo();history=[];selected=null;legal=[];render();});
+$('flip').addEventListener('click',()=>{orientation=orientation==='w'?'b':'w';render();});
+$('hint').addEventListener('click',()=>{if(game.isGameOver()||game.turn()!=='w')return;const m=chooseBotMoveForWhite();if(m){selected=m.from;legal=game.moves({square:m.from,verbose:true});render();$('status').textContent='Dica: experimente '+m.from+' → '+m.to+'.';}});
+function chooseBotMoveForWhite(){const moves=game.moves({verbose:true});if(!moves.length)return null;return moves.sort((a,b)=>(b.captured?values[b.captured]:0)-(a.captured?values[a.captured]:0))[0];}
+$('club').addEventListener('change',()=>{$('yourClub').textContent=$('club').value;$('yourCrest').textContent=clubCode($('club').value);});
+$('stadium').addEventListener('change',()=>{$('boardTitle').textContent=mode==='training'?'Treinamento guiado':mode==='online'?'Modo online':$('stadium').value+' · Partida amistosa';});
+$('club').dispatchEvent(new Event('change'));newGame();
+})();
+</script>
+</body></html>
