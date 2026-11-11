@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d0b">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Resenha Palpites — Área de testes</title>
+<link rel="icon" href="/favicon-32x32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#080d0b;--panel:#101713;--panel2:#151e17;--line:#29372d;--text:#f4f6f4;--muted:#a6b0a8;--lime:#a8ff3f;--red:#ff7777;--blue:#83b6ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 Inter,system-ui,sans-serif}.app{min-height:100vh;background:radial-gradient(ellipse at 82% -5%,rgba(168,255,63,.12),transparent 34%),var(--bg)}a{color:inherit;text-decoration:none}
+.site-header{width:min(1120px,calc(100% - 36px));height:78px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.brand img{width:47px;height:51px;object-fit:contain}.brand span{font:italic 900 21px "Barlow Condensed",sans-serif;color:var(--lime)}.back{color:var(--muted);font-size:12px;font-weight:800}.back:hover{color:var(--lime)}
+.wrap{width:min(1050px,calc(100% - 36px));margin:auto}.hero{padding:45px 0 22px}.eyebrow{font-size:10px;font-weight:900;letter-spacing:1.7px;text-transform:uppercase;color:var(--lime)}h1{font:900 clamp(43px,7vw,68px)/.92 "Barlow Condensed",sans-serif;margin:10px 0 8px;letter-spacing:.2px}h1 span{color:var(--lime)}.intro{color:var(--muted);max-width:650px;margin:0}.test-note{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:7px 11px;border:1px solid #6a5929;border-radius:8px;background:#211c10;color:#ffe08a;font-size:10px;font-weight:900;letter-spacing:.6px;text-transform:uppercase}
+.panel{border:1px solid var(--line);border-radius:15px;background:linear-gradient(145deg,#121a14,#0d130f);padding:18px;margin:20px 0}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.round-select{display:flex;align-items:center;gap:10px}.round-select label{font-size:10px;color:var(--muted);font-weight:900;letter-spacing:.8px;text-transform:uppercase}.round-select select{min-width:160px;background:#080e0a;color:white;border:1px solid #3a4b3c;border-radius:9px;padding:11px 34px 11px 12px;font:800 12px Inter}.summary{display:flex;gap:8px;flex-wrap:wrap}.pill{border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--muted);font-size:10px}.pill strong{color:var(--lime);font-size:13px;margin-right:4px}
+.match-list{display:grid;gap:12px;margin:17px 0 60px}.match-card{border:1px solid var(--line);border-radius:14px;background:#101713;overflow:hidden}.match-top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:#141e17;border-bottom:1px solid var(--line);font-size:10px;color:var(--muted)}.match-top strong{color:#dce5dd;letter-spacing:.4px}.match-body{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:17px 16px}.team{display:flex;align-items:center;gap:10px;min-width:0}.team.away{justify-content:flex-end;text-align:right}.crest{width:38px;height:38px;object-fit:contain;flex:0 0 38px}.team-name{font-size:12px;font-weight:900;line-height:1.25;overflow-wrap:anywhere}.scorebox{display:flex;align-items:center;gap:6px}.scorebox input{width:45px;height:43px;text-align:center;border:1px solid #3b4b3e;border-radius:9px;background:#080e0a;color:white;font:900 20px "Barlow Condensed";outline:none}.scorebox input:focus{border-color:var(--lime);box-shadow:0 0 0 2px #a8ff3f22}.scorebox input:disabled{opacity:.7}.dash{color:#78867b;font-weight:900}.match-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px 13px}.status{font-size:10px;color:var(--muted)}.status.closed{color:#e5c46b}.status.done{color:#a8ff3f}.save{border:1px solid #57783a;background:#1c2a17;color:var(--lime);border-radius:8px;padding:8px 12px;font:900 10px Inter;cursor:pointer}.save:hover{background:#293d20}.save:disabled{opacity:.4;cursor:not-allowed}.empty,.gate{border:1px dashed #405044;border-radius:14px;padding:35px 18px;text-align:center;color:var(--muted);background:#0d140f}.gate h2{font:900 27px "Barlow Condensed";color:white;margin:0 0 8px}.gate p{margin:0 auto 17px;max-width:480px}.gate a{display:inline-block;background:var(--lime);color:#101810;padding:11px 16px;border-radius:9px;font-weight:900}.loading{padding:35px;text-align:center;color:var(--muted)}.message{margin:14px 0;padding:11px 13px;border-radius:9px;background:#172219;border:1px solid #344b30;color:#c8ff9d;font-size:12px}.message.error{background:#261512;border-color:#713d35;color:#ffb4a8}.footer{border-top:1px solid var(--line);padding:22px 0 32px;color:#819087;font-size:10px}
+@media(max-width:620px){.site-header{height:68px}.brand img{width:40px;height:44px}.wrap{width:calc(100% - 26px)}.hero{padding:35px 0 18px}.panel{padding:13px}.match-body{gap:5px;padding:14px 9px}.team{gap:6px}.crest{width:30px;height:30px;flex-basis:30px}.team-name{font-size:10px}.scorebox{gap:4px}.scorebox input{width:37px;height:40px;font-size:19px}.match-top{padding:9px 10px}.match-foot{padding:0 10px 11px}.summary{width:100%}.round-select{width:100%;justify-content:space-between}.round-select select{flex:1;max-width:190px}}
+</style>
+</head>
+<body><div class="app">
+<header class="site-header"><a class="brand" href="/" aria-label="Resenha do Fut"><img src="/logo.png" alt=""><span>RESENHA<br>DO FUT.</span></a><a class="back" href="/">← Voltar ao site</a></header>
+<main class="wrap">
+<section class="hero"><div class="eyebrow">Novo modo • em desenvolvimento</div><h1>RESENHA <span>PALPITES</span></h1><p class="intro">Acerte os placares do Brasileirão, some pontos e dispute o topo da resenha. Esta é uma versão privada para testes — ainda não vale XP oficial.</p><div class="test-note">● ambiente de testes privado</div></section>
+<section id="gate" class="gate"><h2>Verificando acesso...</h2><p>Esta área é exclusiva para a conta autorizada nos testes.</p></section>
+<section id="workspace" hidden>
+<div class="panel"><div class="toolbar"><div class="round-select"><label for="round">Rodada</label><select id="round"><option value="all">Todas as rodadas</option></select></div><div class="summary"><div class="pill"><strong id="saved-count">0</strong> palpites salvos</div><div class="pill"><strong id="match-count">—</strong> partidas</div></div></div><div id="message" aria-live="polite"></div></div>
+<div id="match-list" class="match-list"><div class="loading">Carregando calendário do Brasileirão...</div></div>
+</section>
+</main>
+<footer class="wrap footer">Resenha do Fut • Área privada de desenvolvimento • Os palpites desta versão não geram XP.</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(async()=>{
+ const gate=document.getElementById('gate'), workspace=document.getElementById('workspace'), list=document.getElementById('match-list'), roundSelect=document.getElementById('round'), message=document.getElementById('message');
+ const showGate=(title,desc,link)=>{gate.innerHTML='<h2>'+title+'</h2><p>'+desc+'</p>'+(link?'<a href="'+link+'">Entrar na minha conta</a>':'');};
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const dateFmt=s=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(s));
+ let matches=[],predictions={};
+ try{
+  const configRes=await fetch('/api/config/supabase',{cache:'no-store'}),config=await configRes.json();
+  if(!config.configured||!window.supabase?.createClient){showGate('Acesso indisponível','A conexão com a conta ainda não está configurada.','/conta');return;}
+  const client=window.supabase.createClient(config.url,config.publishableKey);
+  const {data:{session}}=await client.auth.getSession();
+  if(!session){showGate('Entre na sua conta','Faça login para acessar a prévia privada do Resenha Palpites.','/conta');return;}
+  const headers={Authorization:'Bearer '+session.access_token};
+  const check=await fetch('/api/palpites/me',{headers,cache:'no-store'});
+  if(!check.ok){showGate('Acesso restrito','Sua conta não está autorizada a visualizar esta área de testes.');return;}
+  gate.hidden=true;workspace.hidden=false;
+  const load=await fetch('/api/palpites/matches',{headers,cache:'no-store'});
+  const data=await load.json();
+  if(!load.ok) throw new Error(data.error||'Não foi possível carregar os jogos.');
+  matches=data.matches||[];
+  (data.predictions||[]).forEach(p=>predictions[p.match_id]=p);
+  const rounds=[...new Set(matches.map(m=>m.matchday).filter(Number.isInteger))].sort((a,b)=>a-b);
+  rounds.forEach(n=>{const o=document.createElement('option');o.value=String(n);o.textContent='Rodada '+n;roundSelect.appendChild(o);});
+  document.getElementById('match-count').textContent=matches.length;
+  document.getElementById('saved-count').textContent=Object.keys(predictions).length;
+  const render=()=>{
+   const selected=roundSelect.value;
+   const filtered=matches.filter(m=>selected==='all'||String(m.matchday)===selected).sort((a,b)=>new Date(a.utcDate)-new Date(b.utcDate));
+   if(!filtered.length){list.innerHTML='<div class="empty">Nenhuma partida encontrada para esta rodada.</div>';return;}
+   list.innerHTML=filtered.map(m=>{
+    const p=predictions[m.id],closed=new Date(m.utcDate).getTime()<=Date.now()||!['SCHEDULED','TIMED'].includes(m.status);
+    const done=['FINISHED','AWARDED'].includes(m.status);
+    const home=p?.predicted_home_score??'',away=p?.predicted_away_score??'';
+    const result=m.score&&m.score.home!==null&&m.score.away!==null?m.score.home+' × '+m.score.away:'';
+    const status=done?'Finalizado'+(result?' • '+result:''):closed?'Palpite encerrado':'Palpites abertos';
+    const logo=(team)=>team.crest?'<img class="crest" src="'+esc(team.crest)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span class="crest"></span>';
+    return '<article class="match-card" data-match="'+m.id+'"><div class="match-top"><strong>RODADA '+esc(m.matchday||'—')+'</strong><span>'+dateFmt(m.utcDate)+'</span></div><div class="match-body"><div class="team">'+logo(m.homeTeam)+'<span class="team-name">'+esc(m.homeTeam.shortName||m.homeTeam.name)+'</span></div><div class="scorebox"><input aria-label="Gols do '+esc(m.homeTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+home+'" '+(closed?'disabled':'')+' data-score="home"><span class="dash">×</span><input aria-label="Gols do '+esc(m.awayTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+away+'" '+(closed?'disabled':'')+' data-score="away"></div><div class="team away"><span class="team-name">'+esc(m.awayTeam.shortName||m.awayTeam.name)+'</span>'+logo(m.awayTeam)+'</div></div><div class="match-foot"><span class="status '+(done?'done':closed?'closed':'')+'">'+status+(p?' • salvo':'')+'</span><button class="save" data-save="'+m.id+'" '+(closed?'disabled':'')+'>'+(p?'Atualizar':'Salvar palpite')+'</button></div></article>';
+   }).join('');
+   list.querySelectorAll('[data-save]').forEach(btn=>btn.addEventListener('click',async()=>{
+    const card=btn.closest('.match-card'),id=Number(btn.dataset.save),home=card.querySelector('[data-score="home"]').value,away=card.querySelector('[data-score="away"]').value;
+    if(home===''||away===''||!Number.isInteger(Number(home))||!Number.isInteger(Number(away))||Number(home)<0||Number(away)<0||Number(home)>20||Number(away)>20){setMessage('Preencha os dois gols com números entre 0 e 20.',true);return;}
+    btn.disabled=true;btn.textContent='Salvando...';
+    try{const response=await fetch('/api/palpites/prediction',{method:'POST',headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({matchId:id,home:Number(home),away:Number(away)})});const saved=await response.json();if(!response.ok)throw new Error(saved.error||'Falha ao salvar');predictions[id]=saved.prediction;document.getElementById('saved-count').textContent=Object.keys(predictions).length;setMessage('Palpite salvo! Você pode alterá-lo até o início da partida.',false);render();}
+    catch(e){setMessage(e.message,true);btn.disabled=false;btn.textContent='Tentar novamente';}
+   }));
+  };
+  const setMessage=(txt,error)=>{message.className='message'+(error?' error':'');message.textContent=txt;};
+  roundSelect.addEventListener('change',render);
+  render();
+ }catch(e){showGate('Não foi possível abrir os palpites',e.message+' Atualize a página em alguns instantes.');}
+})();
+</script>
+</body></html>
