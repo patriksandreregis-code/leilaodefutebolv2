@@ -5,6 +5,7 @@ const { AccessToken } = require('livekit-server-sdk');
 const POOL = require('./craques.js'), copa = require('./copa.js');
 const beatball = require('./resenha-ball-server.js');
 const chessServer = require('./resenha-chess-server.js');
+const { recordCompletedMatch } = require('./activity-counter.js');
 let SQUADS = [];
 try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'utf8') + ';return SQUADS')(); } catch (e) { console.log('dados.js não carregado:', e.message); }
 
@@ -159,6 +160,7 @@ function nextLot(r) {
       return void setTimeout(() => r.phase === 'auction' && !r.lot && nextLot(r), 3500 / T);
     }
     r.phase = 'end'; r.lot = null;
+    if (r.players.length >= 2) recordCompletedMatch('leilao', 'leilao:' + r.code).catch(e => console.error('[Resenha Activity] Leilão:', e.message));
     const w = [...r.players].sort((a, b) => score(b) - score(a) || b.budget - a.budget)[0];
     if (r.players.filter(p => p.supabaseUserId && p.hasValidBid).length >= 2) awardAuctionXP(r);
     if (r.cfg.copa && SQUADS.length > 8) runCopa(r);
