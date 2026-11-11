@@ -97,6 +97,28 @@ h1,h2,h3,p{margin-top:0}
 .nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
 .nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
 @media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
+
+.mobile-menu-toggle{display:none}
+@media(max-width:760px){
+  .site-header{height:auto;min-height:70px;flex-wrap:wrap;gap:0;padding:9px 0}
+  .mobile-menu-toggle{display:flex;width:42px;height:42px;flex:0 0 42px;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid #344139;border-radius:10px;background:#101713;cursor:pointer}
+  .mobile-menu-toggle span{display:block;width:19px;height:2px;border-radius:2px;background:var(--lime);transition:transform .18s ease,opacity .18s ease}
+  .site-header.menu-open .mobile-menu-toggle span:first-child{transform:translateY(7px) rotate(45deg)}
+  .site-header.menu-open .mobile-menu-toggle span:nth-child(2){opacity:0}
+  .site-header.menu-open .mobile-menu-toggle span:last-child{transform:translateY(-7px) rotate(-45deg)}
+  .site-nav{display:none;position:absolute;top:calc(100% + 1px);left:0;right:0;z-index:50;padding:12px;background:#101713;border:1px solid #344139;border-radius:0 0 14px 14px;box-shadow:0 18px 35px #000b;flex-direction:column;align-items:stretch;gap:3px;font-size:14px}
+  .site-header.menu-open .site-nav{display:flex}
+  .site-nav>a{display:block!important;padding:11px 12px;border-radius:8px;white-space:normal}
+  .site-nav>a:hover{background:#1b281c}
+  .site-nav .home-cta{display:flex!important;width:100%;justify-content:center;margin-top:7px;padding:13px}
+  .site-nav .nav-dropdown{width:100%}
+  .site-nav .nav-dropdown-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:12px;border-radius:8px;font-size:14px}
+  .site-nav .nav-dropdown-toggle:hover{background:#1b281c}
+  .site-nav .nav-dropdown-menu{display:none;position:static;left:auto;right:auto;min-width:0;width:100%;margin:0 0 5px;padding:5px;background:#0b110d;border:1px solid #29372d;border-radius:9px;box-shadow:none}
+  .site-nav .nav-dropdown.open .nav-dropdown-menu{display:grid}
+  .site-nav .nav-dropdown-menu a{padding:10px 12px}
+}
+
 </style>
 <meta name="description" content="Jogue com os amigos: leilão de craques atuais e lendas com lances ao vivo e o Dado da Copa, que sorteia seleções e monta seu time para ser campeão do mundo. Grátis, direto no navegador.">
 <link rel="canonical" href="{{SITE}}/">
@@ -111,7 +133,8 @@ h1,h2,h3,p{margin-top:0}
 <main class="app" id="top">
 <header class="site-header">
 <a class="site-brand" href="/" aria-label="Resenha do Fut - início"><img class="site-brand-icon" src="/logo.png" alt="Logo Resenha do Fut"><span class="site-brand-name">RESENHA<br><span>DO FUT.</span></span></a>
-<nav class="site-nav" aria-label="Navegação principal">
+<button class="mobile-menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="site-navigation"><span></span><span></span><span></span></button>
+<nav class="site-nav" id="site-navigation" aria-label="Navegação principal">
 <a href="/#jogos">Jogos</a>
 <div class="nav-dropdown"><button class="nav-dropdown-toggle" type="button" aria-expanded="false">Sobre os jogos <span aria-hidden="true">⌄</span></button><div class="nav-dropdown-menu">
 <a href="/jogos/leilao-de-futebol">Leilão de Futebol</a><a href="/jogos/dado-da-copa">Dado da Copa</a><a href="/jogos/resenha-ball">Resenha Ball</a><a href="/jogos/resenha-x">Resenha Chess</a><a href="/jogos/resenha-scout">Resenha Scout</a><a href="/jogos/resenha-manager">Resenha Manager <small>EM BREVE</small></a>
@@ -144,6 +167,6 @@ h1,h2,h3,p{margin-top:0}
 <section class="wrap" id="sobre"><div class="community"><div><h2>Seu próximo clássico começa aqui.</h2><p>Escolha o jogo, convoque os amigos e deixe a resenha rolar.</p></div><a href="#jogos">BORA JOGAR ↗</a></div></section>
 <footer class="wrap footer"><span><strong>RESENHA DO FUT.</strong> — Futebol, dados e diversão.</span><span>Feito para quem nunca para de falar de futebol.</span></footer>
 </main>
-<script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script><script src="/nav.js" defer></script>
+<script>(()=>{const header=document.querySelector('.site-header');const menuButton=document.querySelector('.mobile-menu-toggle');const siteNav=document.querySelector('.site-nav');if(header&&menuButton&&siteNav){menuButton.addEventListener('click',()=>{const open=header.classList.toggle('menu-open');menuButton.setAttribute('aria-expanded',String(open));menuButton.setAttribute('aria-label',open?'Fechar menu':'Abrir menu')});siteNav.querySelectorAll('a').forEach(link=>link.addEventListener('click',()=>{header.classList.remove('menu-open');menuButton.setAttribute('aria-expanded','false');menuButton.setAttribute('aria-label','Abrir menu')}));document.addEventListener('keydown',e=>{if(e.key==='Escape'){header.classList.remove('menu-open');menuButton.setAttribute('aria-expanded','false');menuButton.setAttribute('aria-label','Abrir menu')}})};document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');if(!b)return;b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))});document.addEventListener('click',e=>{if(!d.contains(e.target)){d.classList.remove('open');b.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape'){d.classList.remove('open');b.setAttribute('aria-expanded','false');b.focus()}})})})();</script><script src="/nav.js" defer></script>
 </body>
 </html>
