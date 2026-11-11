@@ -254,18 +254,37 @@ const server = http.createServer(async (q, s) => {
           });
           if (!response.ok) throw new Error('football-data.org HTTP ' + response.status + ': ' + (await response.text()).slice(0, 250));
           const data = await response.json();
-          globalThis.__resenhaPalpitesCache = { at: Date.now(), matches: (data.matches || []).map(m => ({
-            id: m.id, season: m.season && m.season.startDate ? Number(m.season.startDate.slice(0,4)) : season,
-            matchday: m.matchday, utcDate: m.utcDate, status: m.status,
-            homeTeam: { id: m.homeTeam && m.homeTeam.id, name: m.homeTeam && m.homeTeam.name, shortName: m.homeTeam && m.homeTeam.shortName, crest: m.homeTeam && m.homeTeam.crest },
-            awayTeam: { id: m.awayTeam && m.awayTeam.id, name: m.awayTeam && m.awayTeam.name, shortName: m.awayTeam && m.awayTeam.shortName, crest: m.awayTeam && m.awayTeam.crest },
-            score: m.score && m.score.fullTime ? { home: m.score.fullTime.home, away: m.score.fullTime.away } : null
-          })) };
+          const extra = await Promise.allSettled([
+            fetch('https://api.football-data.org/v4/competitions/BSA/standings?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) }).then(async r => { if (!r.ok) throw new Error('standings HTTP ' + r.status); return r.json(); }),
+            fetch('https://api.football-data.org/v4/competitions/BSA/scorers?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) }).then(async r => { if (!r.ok) throw new Error('scorers HTTP ' + r.status); return r.json(); })
+          ]);
+          const standingsData = extra[0].status === 'fulfilled' ? extra[0].value : null;
+          const scorersData = extra[1].status === 'fulfilled' ? extra[1].value : null;
+          const table = standingsData && standingsData.standings && (standingsData.standings.find(x => x.type === 'TOTAL') || standingsData.standings[0]);
+          const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) ||
+            (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday).sort((a,b) => new Date(a.utcDate)-new Date(b.utcDate))[0]?.matchday || 1;
+          globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday,
+            matches: (data.matches || []).map(m => ({
+              id: m.id, season: m.season && m.season.startDate ? Number(m.season.startDate.slice(0,4)) : season,
+              matchday: m.matchday, utcDate: m.utcDate, status: m.status,
+              homeTeam: { id: m.homeTeam && m.homeTeam.id, name: m.homeTeam && m.homeTeam.name, shortName: m.homeTeam && m.homeTeam.shortName, crest: m.homeTeam && m.homeTeam.crest },
+              awayTeam: { id: m.awayTeam && m.awayTeam.id, name: m.awayTeam && m.awayTeam.name, shortName: m.awayTeam && m.awayTeam.shortName, crest: m.awayTeam && m.awayTeam.crest },
+              score: m.score && m.score.fullTime ? { home: m.score.fullTime.home, away: m.score.fullTime.away } : null
+            })),
+            standings: table && table.table ? table.table : [],
+            scorers: scorersData && scorersData.scorers ? scorersData.scorers : [],
+            standingsAvailable: !!(table && table.table), scorersAvailable: !!(scorersData && scorersData.scorers)
+          };
+          if (extra.some(x => x.status === 'rejected')) console.warn('[Palpites] Classificação/artilharia indisponível temporariamente:', extra.filter(x => x.status === 'rejected').map(x => x.reason && x.reason.message));
         }
         const predictionResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,predicted_home_score,predicted_away_score,actual_home_score,actual_away_score,match_status,settled_at&season=eq.' + season + '&user_id=eq.' + encodeURIComponent(user.id) + '&order=matchday.asc', { headers: dbHeaders });
         if (!predictionResponse.ok) throw new Error('Supabase HTTP ' + predictionResponse.status + ': ' + (await predictionResponse.text()).slice(0,250));
         const predictions = await predictionResponse.json();
-        return sendJson(200, { season, matches: globalThis.__resenhaPalpitesCache.matches, predictions });
+        return sendJson(200, { season, currentMatchday: globalThis.__resenhaPalpitesCache.currentMatchday,
+          matches: globalThis.__resenhaPalpitesCache.matches, predictions,
+          standings: globalThis.__resenhaPalpitesCache.standings || [], scorers: globalThis.__resenhaPalpitesCache.scorers || [],
+          standingsAvailable: !!globalThis.__resenhaPalpitesCache.standingsAvailable,
+          scorersAvailable: !!globalThis.__resenhaPalpitesCache.scorersAvailable });
       } catch (error) {
         console.error('[Palpites] Falha ao carregar partidas:', error.message);
         return sendJson(502, { error: 'Não foi possível carregar as partidas agora. ' + error.message.slice(0,180) });
