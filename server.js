@@ -235,7 +235,7 @@ const server = http.createServer(async (q, s) => {
 
   if ((pth === '/api/palpites/me' || pth === '/api/palpites/matches' || pth === '/api/palpites/prediction') && (q.method === 'GET' || q.method === 'POST')) {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
-    const token = String(q.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const token = String(q.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const user = await verifyPalpitesAdmin(token);
     if (!user) return sendJson(403, { error: 'Área de testes restrita ao administrador autorizado.' });
     if (pth === '/api/palpites/me') return sendJson(200, { ok: true, email: user.email });
@@ -243,7 +243,7 @@ const server = http.createServer(async (q, s) => {
     const apiToken = process.env.FOOTBALL_DATA_API_TOKEN;
     if (!secret || !process.env.SUPABASE_URL) return sendJson(503, { error: 'Banco de dados ainda não configurado para os palpites.' });
     const season = 2026;
-    const base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+    const base = process.env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/';
     const dbHeaders = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json' };
     if (pth === '/api/palpites/matches') {
       if (!apiToken) return sendJson(503, { error: 'Configure FOOTBALL_DATA_API_TOKEN no servidor para carregar o Brasileirão.' });
