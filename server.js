@@ -49,6 +49,13 @@ async function verifyAuctionUser(accessToken) {
     return user && user.id && user.email_confirmed_at ? user : null;
   } catch (e) { console.error('Falha ao validar conta do Leilão:', e.message); return null; }
 }
+async function verifyPalpitesAdmin(accessToken) {
+  const user = await verifyAuctionUser(accessToken);
+  const allowedEmail = String(process.env.PALPITES_ADMIN_EMAIL || '').trim().toLowerCase();
+  if (!user || !allowedEmail || String(user.email || '').trim().toLowerCase() !== allowedEmail) return null;
+  return user;
+}
+
 async function awardAuctionXP(r) {
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret || !process.env.SUPABASE_URL) {
@@ -210,7 +217,7 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js', '/scout': 'resenha-scout.html', '/jogos/resenha-scout': 'jogos/resenha-scout.html' };
+const FILES = { '/palpites-teste': 'palpites-teste.html', '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js', '/scout': 'resenha-scout.html', '/jogos/resenha-scout': 'jogos/resenha-scout.html' };
 const SEC = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=()',
@@ -225,6 +232,83 @@ function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores le
 const server = http.createServer(async (q, s) => {
   const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
   if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
+
+  if ((pth === '/api/palpites/me' || pth === '/api/palpites/matches' || pth === '/api/palpites/prediction') && (q.method === 'GET' || q.method === 'POST')) {
+    const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
+    const token = String(q.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const user = await verifyPalpitesAdmin(token);
+    if (!user) return sendJson(403, { error: 'Área de testes restrita ao administrador autorizado.' });
+    if (pth === '/api/palpites/me') return sendJson(200, { ok: true, email: user.email });
+    const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const apiToken = process.env.FOOTBALL_DATA_API_TOKEN;
+    if (!secret || !process.env.SUPABASE_URL) return sendJson(503, { error: 'Banco de dados ainda não configurado para os palpites.' });
+    const season = 2026;
+    const base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+    const dbHeaders = { apikey: secret, Authorization: 'Bearer ' + secret, 'Content-Type': 'application/json' };
+    if (pth === '/api/palpites/matches') {
+      if (!apiToken) return sendJson(503, { error: 'Configure FOOTBALL_DATA_API_TOKEN no servidor para carregar o Brasileirão.' });
+      try {
+        if (!globalThis.__resenhaPalpitesCache || Date.now() - globalThis.__resenhaPalpitesCache.at > 5 * 60 * 1000) {
+          const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, {
+            headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000)
+          });
+          if (!response.ok) throw new Error('football-data.org HTTP ' + response.status + ': ' + (await response.text()).slice(0, 250));
+          const data = await response.json();
+          globalThis.__resenhaPalpitesCache = { at: Date.now(), matches: (data.matches || []).map(m => ({
+            id: m.id, season: m.season && m.season.startDate ? Number(m.season.startDate.slice(0,4)) : season,
+            matchday: m.matchday, utcDate: m.utcDate, status: m.status,
+            homeTeam: { id: m.homeTeam && m.homeTeam.id, name: m.homeTeam && m.homeTeam.name, shortName: m.homeTeam && m.homeTeam.shortName, crest: m.homeTeam && m.homeTeam.crest },
+            awayTeam: { id: m.awayTeam && m.awayTeam.id, name: m.awayTeam && m.awayTeam.name, shortName: m.awayTeam && m.awayTeam.shortName, crest: m.awayTeam && m.awayTeam.crest },
+            score: m.score && m.score.fullTime ? { home: m.score.fullTime.home, away: m.score.fullTime.away } : null
+          })) };
+        }
+        const predictionResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,predicted_home_score,predicted_away_score,actual_home_score,actual_away_score,match_status,settled_at&season=eq.' + season + '&user_id=eq.' + encodeURIComponent(user.id) + '&order=matchday.asc', { headers: dbHeaders });
+        if (!predictionResponse.ok) throw new Error('Supabase HTTP ' + predictionResponse.status + ': ' + (await predictionResponse.text()).slice(0,250));
+        const predictions = await predictionResponse.json();
+        return sendJson(200, { season, matches: globalThis.__resenhaPalpitesCache.matches, predictions });
+      } catch (error) {
+        console.error('[Palpites] Falha ao carregar partidas:', error.message);
+        return sendJson(502, { error: 'Não foi possível carregar as partidas agora. ' + error.message.slice(0,180) });
+      }
+    }
+    if (pth === '/api/palpites/prediction' && q.method === 'POST') {
+      let raw = '';
+      q.on('data', chunk => { raw += chunk; if (raw.length > 5000) q.destroy(); });
+      q.on('end', async () => {
+        let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+        const matchId = Number(body.matchId), home = Number(body.home), away = Number(body.away);
+        if (!Number.isSafeInteger(matchId) || !Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0 || home > 20 || away > 20) return sendJson(400, { error: 'Informe um placar válido entre 0 e 20.' });
+        try {
+          if (!globalThis.__resenhaPalpitesCache || Date.now() - globalThis.__resenhaPalpitesCache.at > 5 * 60 * 1000) {
+            if (!apiToken) return sendJson(503, { error: 'API de partidas não configurada.' });
+            const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) });
+            if (!response.ok) throw new Error('football-data.org HTTP ' + response.status);
+            const data = await response.json();
+            globalThis.__resenhaPalpitesCache = { at: Date.now(), matches: (data.matches || []).map(m => ({ id:m.id, matchday:m.matchday, utcDate:m.utcDate, status:m.status, homeTeam:m.homeTeam, awayTeam:m.awayTeam, score:m.score && m.score.fullTime })) };
+          }
+          const match = globalThis.__resenhaPalpitesCache.matches.find(m => m.id === matchId);
+          if (!match) return sendJson(404, { error: 'Partida não encontrada na temporada.' });
+          if (new Date(match.utcDate).getTime() <= Date.now() || !['SCHEDULED','TIMED'].includes(match.status)) return sendJson(409, { error: 'Os palpites desta partida já estão encerrados.' });
+          const payload = { season, match_id: matchId, matchday: match.matchday, user_id: user.id,
+            home_team_id: match.homeTeam.id, away_team_id: match.awayTeam.id,
+            home_team_name: match.homeTeam.name, away_team_name: match.awayTeam.name,
+            home_crest: match.homeTeam.crest || null, away_crest: match.awayTeam.crest || null,
+            kickoff_at: match.utcDate, predicted_home_score: home, predicted_away_score: away,
+            match_status: match.status, updated_at: new Date().toISOString() };
+          const saved = await fetch(base + 'resenha_palpites_predictions?on_conflict=season,match_id,user_id', {
+            method: 'POST', headers: { ...dbHeaders, Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(payload)
+          });
+          if (!saved.ok) throw new Error('Supabase HTTP ' + saved.status + ': ' + (await saved.text()).slice(0,250));
+          return sendJson(200, { ok: true, prediction: (await saved.json())[0] });
+        } catch (error) {
+          console.error('[Palpites] Falha ao salvar palpite:', error.message);
+          return sendJson(500, { error: 'Não foi possível salvar o palpite.' });
+        }
+      });
+      return;
+    }
+  }
+
   if (pth === '/api/config/supabase' && q.method === 'GET') {
     const configured = !!(process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY);
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -460,6 +544,7 @@ const server = http.createServer(async (q, s) => {
     });
     return;
   }
+  if (pth === '/palpites-teste') { hdr['X-Robots-Tag'] = 'noindex, nofollow, noarchive'; }
   if (pth === '/robots.txt') { s.writeHead(200, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end(`User-agent: *\nAllow: /\nDisallow: /manager-teste\nDisallow: /*?sala=\n\nSitemap: ${site}/sitemap.xml\n`); }
   if (pth === '/sitemap.xml') {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
