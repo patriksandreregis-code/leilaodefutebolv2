@@ -44,6 +44,16 @@ h1,h2,h3,p{margin-top:0}
 .secondary{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 17px;border-radius:10px;font-weight:800;font-size:13px;background:#101713;border:1px solid #344139;color:var(--text)}
 .secondary:hover{border-color:var(--lime)}
 .stats{display:flex;gap:30px;margin-top:36px;flex-wrap:wrap}
+.activity-panel{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 auto 8px;padding:17px 20px;border:1px solid #29372d;border-radius:14px;background:linear-gradient(110deg,rgba(168,255,63,.07),rgba(16,23,19,.96) 45%);box-shadow:0 12px 30px #0002}
+.activity-title{display:flex;align-items:center;gap:9px;color:#dfe9e1;font-size:12px;font-weight:800;letter-spacing:.2px}
+.activity-live-dot{width:8px;height:8px;border-radius:50%;background:#a8ff3f;box-shadow:0 0 11px #a8ff3f;flex:0 0 auto}
+.activity-metrics{display:flex;align-items:center;gap:26px}
+.activity-metric{display:flex;align-items:baseline;gap:8px}
+.activity-metric strong{font-size:23px;line-height:1;color:#a8ff3f;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.activity-metric span{font-size:10px;color:#9aa69d;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.activity-status{font-size:10px;color:#819087;margin-top:3px}
+@media(max-width:600px){.activity-panel{align-items:flex-start;flex-direction:column;gap:13px;padding:15px}.activity-metrics{width:100%;justify-content:space-between;gap:12px}.activity-metric{gap:6px}.activity-metric strong{font-size:21px}.activity-metric span{font-size:9px}}
+
 .stat strong{display:block;font-size:22px;letter-spacing:-.7px}
 .stat span{color:#8e9a91;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
 .section{padding:32px 0 62px}
@@ -149,6 +159,16 @@ h1,h2,h3,p{margin-top:0}
 <p>Chame os amigos, dispute craques no leilão e encare desafios de futebol. Aqui, a paixão pelo jogo vira competição.</p>
 <div class="hero-actions"><a class="primary" href="#jogos">Explorar os jogos <span aria-hidden="true">↘</span></a><a class="secondary" href="#extras">Conhecer a plataforma</a></div>
 <div class="stats"><div class="stat"><strong>144</strong><span>Craques no leilão</span></div><div class="stat"><strong>2–8</strong><span>Jogadores por sala</span></div><div class="stat"><strong>∞</strong><span>Resenhas com amigos</span></div></div>
+</section>
+<section class="wrap activity-panel" aria-label="Movimento da comunidade">
+  <div>
+    <div class="activity-title"><span class="activity-live-dot" aria-hidden="true"></span> A resenha está rolando</div>
+    <div class="activity-status" data-resenha-online-status aria-live="polite">Conectando à resenha…</div>
+  </div>
+  <div class="activity-metrics">
+    <div class="activity-metric"><strong data-resenha-online-count>—</strong><span>torcedores online</span></div>
+    <div class="activity-metric"><strong>Em breve</strong><span>resenhas concluídas hoje</span></div>
+  </div>
 </section>
 <section class="wrap section" id="jogos">
 <div class="section-head"><div><div class="kicker">Escolha sua disputa</div><h2>Qual vai ser a resenha de hoje?</h2><p>Do confronto com a galera ao desafio solo.</p></div></div>
