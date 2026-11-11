@@ -82,6 +82,23 @@
 
       const client = window.supabase.createClient(config.url, config.publishableKey);
 
+      const dailyCountNode = document.querySelector('[data-resenha-daily-count]');
+      if (dailyCountNode) {
+        const refreshDailyCount = async () => {
+          try {
+            const { data, error } = await client.rpc('resenha_get_today_match_count');
+            if (error) throw error;
+            const count = Number(data);
+            dailyCountNode.textContent = Number.isFinite(count) ? count.toLocaleString('pt-BR') : '—';
+          } catch (error) {
+            console.warn('Não foi possível atualizar o total diário de partidas:', error);
+            dailyCountNode.textContent = '—';
+          }
+        };
+        refreshDailyCount();
+        window.setInterval(refreshDailyCount, 60000);
+      }
+
       // A presença é independente de login e XP. Um ID aleatório persistente no
       // navegador faz várias abas do mesmo visitante contarem como uma pessoa.
       {
