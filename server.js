@@ -253,8 +253,19 @@ const server = http.createServer(async (q, s) => {
           if (!playersResponse.ok) throw new Error('Não foi possível carregar a base de jogadores: ' + (await playersResponse.text()).slice(0,200));
           const players = await playersResponse.json();
           if (!players.length) return sendJson(503, { error: 'A base de jogadores ainda não foi preenchida.' });
+          // Evita repetir o mesmo craque em desafios recentes. Com 72 nomes ativos,
+          // a janela de 30 dias reduz bastante a repetição sem esgotar o catálogo.
+          const cutoffDate = new Date(date + 'T12:00:00Z');
+          cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 30);
+          const cutoff = cutoffDate.toISOString().slice(0,10);
+          const recentResponse = await fetch(base + 'scout_daily_challenges?select=player_id&challenge_date=gte.' + cutoff + '&challenge_date=lt.' + date, { headers });
+          if (!recentResponse.ok) throw new Error('Não foi possível consultar os desafios recentes: ' + (await recentResponse.text()).slice(0,200));
+          const recentRows = await recentResponse.json();
+          const recentIds = new Set(recentRows.map(row => row.player_id));
+          const freshPlayers = players.filter(player => !recentIds.has(player.id));
+          const selectionPool = freshPlayers.length ? freshPlayers : players;
           const dayHash = crypto.createHash('sha256').update('resenha-scout:' + date).digest();
-          const selected = players[dayHash.readUInt32BE(0) % players.length].id;
+          const selected = selectionPool[dayHash.readUInt32BE(0) % selectionPool.length].id;
           const dailyWrite = await fetch(base + 'scout_daily_challenges', { method: 'POST', headers: { ...headers, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ challenge_date: date, player_id: selected }) });
           if (!dailyWrite.ok) throw new Error('Não foi possível preparar o desafio diário: ' + (await dailyWrite.text()).slice(0,200));
           const challengeResponse = await fetch(base + 'scout_daily_challenges?select=player_id&challenge_date=eq.' + date, { headers });
