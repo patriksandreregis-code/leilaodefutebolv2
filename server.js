@@ -261,8 +261,12 @@ const server = http.createServer(async (q, s) => {
           const standingsData = extra[0].status === 'fulfilled' ? extra[0].value : null;
           const scorersData = extra[1].status === 'fulfilled' ? extra[1].value : null;
           const table = standingsData && standingsData.standings && (standingsData.standings.find(x => x.type === 'TOTAL') || standingsData.standings[0]);
-          const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) ||
-            (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday).sort((a,b) => new Date(a.utcDate)-new Date(b.utcDate))[0]?.matchday || 1;
+          const futureMatches = (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday);
+          const roundCounts = new Map();
+          futureMatches.forEach(m => roundCounts.set(m.matchday, (roundCounts.get(m.matchday) || 0) + 1));
+          const busiestRound = [...roundCounts.entries()].sort((a,b) => b[1]-a[1] ||
+            new Date(futureMatches.find(m => m.matchday === a[0])?.utcDate || 0) - new Date(futureMatches.find(m => m.matchday === b[0])?.utcDate || 0))[0]?.[0];
+          const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) || busiestRound || 1;
           globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday,
             matches: (data.matches || []).map(m => ({
               id: m.id, season: m.season && m.season.startDate ? Number(m.season.startDate.slice(0,4)) : season,
