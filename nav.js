@@ -1,4 +1,62 @@
 (() => {
+  // Menu mobile compartilhado por todas as páginas do Resenha do Fut.
+  const mobileStyle = document.createElement('style');
+  mobileStyle.id = 'resenha-mobile-nav-styles';
+  mobileStyle.textContent = `
+    .mobile-menu-toggle{display:none}
+    @media(max-width:760px){
+      .site-header{height:auto!important;min-height:70px;flex-wrap:wrap;gap:0!important;padding:9px 0}
+      .mobile-menu-toggle{display:flex;width:42px;height:42px;flex:0 0 42px;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid #344139;border-radius:10px;background:#101713;cursor:pointer}
+      .mobile-menu-toggle span{display:block;width:19px;height:2px;border-radius:2px;background:#a8ff3f;transition:transform .18s ease,opacity .18s ease}
+      .site-header.menu-open .mobile-menu-toggle span:first-child{transform:translateY(7px) rotate(45deg)}
+      .site-header.menu-open .mobile-menu-toggle span:nth-child(2){opacity:0}
+      .site-header.menu-open .mobile-menu-toggle span:last-child{transform:translateY(-7px) rotate(-45deg)}
+      .site-nav{display:none!important;position:absolute!important;top:calc(100% + 1px);left:0!important;right:0!important;z-index:999;padding:12px!important;background:#101713!important;border:1px solid #344139!important;border-radius:0 0 14px 14px!important;box-shadow:0 18px 35px #000b!important;flex-direction:column!important;align-items:stretch!important;gap:3px!important;font-size:14px!important}
+      .site-header.menu-open .site-nav{display:flex!important}
+      .site-nav>a{display:block!important;padding:11px 12px!important;border-radius:8px;white-space:normal!important}
+      .site-nav>a:hover{background:#1b281c}
+      .site-nav .home-cta{display:flex!important;width:100%;justify-content:center;margin-top:7px;padding:13px!important}
+      .site-nav .nav-dropdown{width:100%}
+      .site-nav .nav-dropdown-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;padding:12px!important;border-radius:8px;font-size:14px!important}
+      .site-nav .nav-dropdown-toggle:hover{background:#1b281c}
+      .site-nav .nav-dropdown-menu{display:none!important;position:static!important;left:auto!important;right:auto!important;min-width:0!important;width:100%;margin:0 0 5px;padding:5px!important;background:#0b110d!important;border:1px solid #29372d!important;border-radius:9px;box-shadow:none!important}
+      .site-nav .nav-dropdown.open .nav-dropdown-menu{display:grid!important}
+      .site-nav .nav-dropdown-menu a{padding:10px 12px!important}
+    }
+  `;
+  document.head.appendChild(mobileStyle);
+
+  const header = document.querySelector('.site-header');
+  const siteNav = header && header.querySelector('.site-nav');
+  if (header && siteNav && !header.querySelector('.mobile-menu-toggle')) {
+    const menuButton = document.createElement('button');
+    menuButton.className = 'mobile-menu-toggle';
+    menuButton.type = 'button';
+    menuButton.setAttribute('aria-label', 'Abrir menu');
+    menuButton.setAttribute('aria-expanded', 'false');
+    menuButton.setAttribute('aria-controls', 'site-navigation');
+    menuButton.innerHTML = '<span></span><span></span><span></span>';
+    siteNav.id = siteNav.id || 'site-navigation';
+    header.insertBefore(menuButton, siteNav);
+    menuButton.addEventListener('click', () => {
+      const open = header.classList.toggle('menu-open');
+      menuButton.setAttribute('aria-expanded', String(open));
+      menuButton.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+    });
+    siteNav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+      header.classList.remove('menu-open');
+      menuButton.setAttribute('aria-expanded', 'false');
+      menuButton.setAttribute('aria-label', 'Abrir menu');
+    }));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        header.classList.remove('menu-open');
+        menuButton.setAttribute('aria-expanded', 'false');
+        menuButton.setAttribute('aria-label', 'Abrir menu');
+      }
+    });
+  }
+
   const accountLink = document.querySelector('[data-account-link]');
   if (!accountLink) return;
 
