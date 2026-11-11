@@ -58,15 +58,14 @@
   }
 
   const accountLink = document.querySelector('[data-account-link]');
-  if (!accountLink) return;
 
   const updateLabel = (session) => {
-    accountLink.textContent = session && session.user ? 'Minha conta' : 'Criar conta';
+    if (accountLink) accountLink.textContent = session && session.user ? 'Minha conta' : 'Criar conta';
   };
 
   const initialize = async () => {
     try {
-      if (!window.supabase) {
+      if (!window.supabase || !window.supabase.createClient) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
@@ -77,16 +76,79 @@
       }
 
       const response = await fetch('/api/config/supabase', { cache: 'no-store' });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error('Configuração Supabase indisponível');
       const config = await response.json();
-      if (!config.configured || !window.supabase) return;
+      if (!config.configured || !window.supabase || !window.supabase.createClient) return;
 
       const client = window.supabase.createClient(config.url, config.publishableKey);
-      const { data: { session } } = await client.auth.getSession();
-      updateLabel(session);
-      client.auth.onAuthStateChange((_event, nextSession) => updateLabel(nextSession));
+
+      // A presença é independente de login e XP. Um ID aleatório persistente no
+      // navegador faz várias abas do mesmo visitante contarem como uma pessoa.
+      if (document.querySelector('[data-resenha-online-count]')) {
+        let visitorId = '';
+        try {
+          visitorId = localStorage.getItem('resenha_presence_id') || '';
+          if (!visitorId) {
+            visitorId = (window.crypto && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : 'v-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+            localStorage.setItem('resenha_presence_id', visitorId);
+          }
+        } catch (_) {
+          visitorId = (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'v-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        }
+
+        const countNode = document.querySelector('[data-resenha-online-count]');
+        const statusNode = document.querySelector('[data-resenha-online-status]');
+        const channel = client.channel('resenha-site-presence-v1', {
+          config: { presence: { key: visitorId } }
+        });
+
+        const renderCount = () => {
+          const state = channel.presenceState() || {};
+          const uniqueVisitors = Object.keys(state).length;
+          if (countNode) countNode.textContent = String(uniqueVisitors);
+          if (statusNode) statusNode.textContent = uniqueVisitors === 1
+            ? '1 torcedor na resenha agora'
+            : uniqueVisitors + ' torcedores na resenha agora';
+        };
+
+        channel
+          .on('presence', { event: 'sync' }, renderCount)
+          .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              try {
+                await channel.track({ visitor_id: visitorId, online_at: new Date().toISOString() });
+                renderCount();
+              } catch (error) {
+                console.warn('Não foi possível registrar presença:', error);
+                if (countNode) countNode.textContent = '—';
+                if (statusNode) statusNode.textContent = 'Atividade ao vivo indisponível';
+              }
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              if (countNode) countNode.textContent = '—';
+              if (statusNode) statusNode.textContent = 'Reconectando à resenha…';
+            }
+          });
+
+        window.addEventListener('pagehide', () => {
+          try { client.removeChannel(channel); } catch (_) {}
+        }, { once: true });
+      }
+
+      if (accountLink) {
+        const { data: { session } } = await client.auth.getSession();
+        updateLabel(session);
+        client.auth.onAuthStateChange((_event, nextSession) => updateLabel(nextSession));
+      }
     } catch (error) {
-      console.warn('Não foi possível atualizar o botão da conta:', error);
+      console.warn('Inicialização dos recursos compartilhados:', error);
+      const countNode = document.querySelector('[data-resenha-online-count]');
+      const statusNode = document.querySelector('[data-resenha-online-status]');
+      if (countNode) countNode.textContent = '—';
+      if (statusNode) statusNode.textContent = 'Atividade ao vivo indisponível';
     }
   };
 
