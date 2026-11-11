@@ -61,12 +61,13 @@
   $('round-heading').textContent='RODADA '+selectedRound;
   $('round-subtitle').textContent=selectedRound===currentRound?'Rodada atual • jogos da semana':'Consulta de rodada anterior';
   $('match-count').textContent=filtered.length;
-  list.innerHTML=filtered.length?filtered.map(renderMatch).join(''):'<div class="empty">Nenhuma partida encontrada nesta rodada.</div>';
-  bindSave(list);
   const thisWeek=weekKey(new Date());
   const delayed=matches.filter(m=>Number(m.matchday)<currentRound&&weekKey(m.utcDate)===thisWeek&&new Date(m.utcDate).getTime()>Date.now()&&['SCHEDULED','TIMED'].includes(m.status)).sort((a,b)=>new Date(a.utcDate)-new Date(b.utcDate));
   const section=$('delayed-section');section.hidden=selectedRound!==currentRound||!delayed.length;
+  list.parentNode.insertBefore(section,list);
   $('delayed-list').innerHTML=delayed.map(renderMatch).join('');bindSave($('delayed-list'));
+  list.innerHTML=filtered.length?filtered.map(renderMatch).join(''):'<div class="empty">Nenhuma partida encontrada nesta rodada.</div>';
+  bindSave(list);
  };
  const renderStandings=()=>{
   const root=$('standings');
@@ -76,7 +77,7 @@
  const renderScorers=()=>{
   const root=$('scorers');
   if(!scorers.length){root.innerHTML='<div class="side-empty">Artilharia indisponível no momento.</div>';return;}
-  root.innerHTML=scorers.slice(0,10).map((p,i)=>{const name=p.player?.name||p.name||'Jogador';const initials=name.split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();return '<div class="scorer"><span class="rank">'+(i+1)+'</span><span class="player-avatar">'+esc(initials)+'</span><span class="player">'+esc(name)+'<span class="clubname">'+esc(p.team?.shortName||p.team?.name||'Clube não informado')+'</span></span><strong class="goals">'+esc(p.goals??0)+'</strong></div>';}).join('');
+  root.innerHTML=scorers.slice(0,7).map((p,i)=>{const name=p.player?.name||p.name||'Jogador';return '<div class="scorer"><span class="rank">'+(i+1)+'</span>'+crest(p.team?.crest)+'<span class="player">'+esc(name)+'<span class="clubname">'+esc(p.team?.shortName||p.team?.name||'Clube não informado')+'</span></span><strong class="goals">'+esc(p.goals??0)+'</strong></div>';}).join('');
  };
  try{
   const configRes=await fetch('/api/config/supabase',{cache:'no-store'}),config=await configRes.json();
