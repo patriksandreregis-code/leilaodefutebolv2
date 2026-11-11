@@ -84,7 +84,7 @@
 
       // A presença é independente de login e XP. Um ID aleatório persistente no
       // navegador faz várias abas do mesmo visitante contarem como uma pessoa.
-      if (document.querySelector('[data-resenha-online-count]')) {
+      {
         let visitorId = '';
         try {
           visitorId = localStorage.getItem('resenha_presence_id') || '';
