@@ -1,6 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const { Chess } = require('chess.js');
+const { recordCompletedMatch } = require('./activity-counter.js');
 const rooms = new Map();
 const CHAT_BAD = new Set('porra caralho carai merda bosta foda foder fodido fodida fodase puta puto putaria fdp vsf vtnc tnc pqp cu cuzao buceta viado viada otario otaria idiota imbecil babaca arrombado arrombada corno corna escroto escrota vagabundo vagabunda cacete piranha vadia retardado mongol desgracado'.split(' '));
 function normalizeChatWord(word) { return word.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[@4]/g,'a').replace(/3/g,'e').replace(/1/g,'i').replace(/0/g,'o').replace(/[$5]/g,'s').replace(/(.)\\1+/g,'$1'); }
@@ -24,7 +25,14 @@ async function verifyUser(accessToken) {
   } catch (error) { console.error('[Resenha Chess] Falha ao validar conta:', error.message); return null; }
 }
 async function recordCompetitiveResult(room) {
-  if (room.resultRecorded || room.players.length !== 2) return;
+  if (room.phase !== 'finished' || room.players.length !== 2) return;
+  const matchId = room.matchId || crypto.randomUUID();
+  room.matchId = matchId;
+  if (!room.activityRecorded) {
+    room.activityRecorded = true;
+    recordCompletedMatch('resenha_chess', 'resenha_chess:' + matchId).catch(e => console.error('[Resenha Activity] Resenha Chess:', e.message));
+  }
+  if (room.resultRecorded) return;
   const [a, b] = room.players;
   if (!a.userId || !b.userId || a.userId === b.userId) return;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -35,8 +43,6 @@ async function recordCompetitiveResult(room) {
   else if (room.result && /vitória das (brancas|pretas)/i.test(room.result)) winner = /brancas/i.test(room.result) ? a : b;
   else draw = room.game.isDraw() || !!(room.result && /empate/i.test(room.result));
   if (!winner && !draw) return;
-  const matchId = room.matchId || crypto.randomUUID();
-  room.matchId = matchId;
   const players = [a, b].map(p => ({
     match_id: matchId, user_id: p.userId,
     opponent_user_id: p === a ? b.userId : a.userId,
