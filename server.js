@@ -307,10 +307,16 @@ const server = http.createServer(async (q, s) => {
             const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) });
             if (!response.ok) throw new Error('football-data.org HTTP ' + response.status);
             const data = await response.json();
-            globalThis.__resenhaPalpitesCache = { at: Date.now(), matches: (data.matches || []).map(m => ({ id:m.id, matchday:m.matchday, utcDate:m.utcDate, status:m.status, homeTeam:m.homeTeam, awayTeam:m.awayTeam, score:m.score && m.score.fullTime })) };
+            const futureMatches = (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday);
+            const roundCounts = new Map();
+            futureMatches.forEach(m => roundCounts.set(m.matchday, (roundCounts.get(m.matchday) || 0) + 1));
+            const busiestRound = [...roundCounts.entries()].sort((a,b) => b[1]-a[1] || new Date(futureMatches.find(m => m.matchday === a[0])?.utcDate || 0) - new Date(futureMatches.find(m => m.matchday === b[0])?.utcDate || 0))[0]?.[0];
+            const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) || busiestRound || 1;
+            globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday, matches: (data.matches || []).map(m => ({ id:m.id, matchday:m.matchday, utcDate:m.utcDate, status:m.status, homeTeam:m.homeTeam, awayTeam:m.awayTeam, score:m.score && m.score.fullTime })) };
           }
           const match = globalThis.__resenhaPalpitesCache.matches.find(m => m.id === matchId);
           if (!match) return sendJson(404, { error: 'Partida não encontrada na temporada.' });
+          if (Number(match.matchday) > Number(globalThis.__resenhaPalpitesCache.currentMatchday || 1)) return sendJson(409, { error: 'Os palpites desta rodada ainda não foram liberados.' });
           if (new Date(match.utcDate).getTime() <= Date.now() || !['SCHEDULED','TIMED'].includes(match.status)) return sendJson(409, { error: 'Os palpites desta partida já estão encerrados.' });
           const payload = { season, match_id: matchId, matchday: match.matchday, user_id: user.id,
             home_team_id: match.homeTeam.id, away_team_id: match.awayTeam.id,
