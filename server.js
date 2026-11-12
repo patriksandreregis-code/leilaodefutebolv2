@@ -361,6 +361,7 @@ const server = http.createServer(async (q, s) => {
         const accessToken = String(body.accessToken || '');
         const user = accessToken ? await verifyAuctionUser(accessToken) : null;
         if (accessToken && !user) return sendJson(401, { error: 'Sua sessão expirou. Entre novamente na sua conta.' });
+        if (!user) return sendJson(401, { error: 'O Resenha Scout é exclusivo para usuários cadastrados e logados. Entre na sua conta para continuar.' });
         const dateParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
         const dateValues = Object.fromEntries(dateParts.map(part => [part.type, part.value]));
         const date = dateValues.year + '-' + dateValues.month + '-' + dateValues.day;
