@@ -316,8 +316,10 @@ const server = http.createServer(async (q, s) => {
           }
           const match = globalThis.__resenhaPalpitesCache.matches.find(m => m.id === matchId);
           if (!match) return sendJson(404, { error: 'Partida não encontrada na temporada.' });
-          if (Number(match.matchday) > Number(globalThis.__resenhaPalpitesCache.currentMatchday || 1)) return sendJson(409, { error: 'Os palpites desta rodada ainda não foram liberados.' });
-          if (new Date(match.utcDate).getTime() <= Date.now() || !['SCHEDULED','TIMED'].includes(match.status)) return sendJson(409, { error: 'Os palpites desta partida já estão encerrados.' });
+          const kickoff = Date.parse(match.utcDate);
+          if (!Number.isFinite(kickoff) || !['SCHEDULED','TIMED'].includes(match.status)) return sendJson(409, { error: 'Esta partida ainda não tem calendário oficial confirmado para receber palpites.' });
+          const deadline = kickoff - 30 * 60 * 1000;
+          if (Date.now() >= deadline) return sendJson(409, { error: 'O prazo para palpitar encerrou 30 minutos antes do início da partida.' });
           const payload = { season, match_id: matchId, matchday: match.matchday, user_id: user.id,
             home_team_id: match.homeTeam.id, away_team_id: match.awayTeam.id,
             home_team_name: match.homeTeam.name, away_team_name: match.awayTeam.name,
