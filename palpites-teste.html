@@ -42,9 +42,9 @@
  const setMessage=(txt,error)=>{message.className='message'+(error?' error':'');message.textContent=txt;};
  const crest=url=>url?'<img src="'+esc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'';
  const renderMatch=m=>{
-  const p=predictions[m.id],futureRound=Number(m.matchday)>currentRound,closed=futureRound||new Date(m.utcDate).getTime()<=Date.now()||!['SCHEDULED','TIMED'].includes(m.status),done=['FINISHED','AWARDED'].includes(m.status);
+  const p=predictions[m.id],kickoff=Date.parse(m.utcDate),deadline=kickoff-30*60*1000,confirmed=Number.isFinite(kickoff)&&['SCHEDULED','TIMED'].includes(m.status),done=['FINISHED','AWARDED'].includes(m.status),closed=done||!confirmed||Date.now()>=deadline;
   const home=p?.predicted_home_score??'',away=p?.predicted_away_score??'',result=m.score&&m.score.home!==null&&m.score.away!==null?m.score.home+' × '+m.score.away:'';
-  const status=done?'Finalizado'+(result?' • '+result:''):futureRound?'Palpites ainda não liberados':closed?'Palpite encerrado':'Palpites abertos';
+  const status=done?'Finalizado'+(result?' • '+result:''):!confirmed?'Aguardando calendário oficial':Date.now()>=deadline?'Prazo encerrado (30 min antes)':'Palpites abertos';
   const logo=team=>team.crest?'<img class="crest" src="'+esc(team.crest)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span class="crest"></span>';
   return '<article class="match-card" data-match="'+m.id+'"><div class="match-top"><strong>RODADA '+esc(m.matchday||'—')+'</strong><span>'+dateFmt(m.utcDate)+'</span></div><div class="match-body"><div class="team">'+logo(m.homeTeam)+'<span class="team-name">'+esc(m.homeTeam.shortName||m.homeTeam.name)+'</span></div><div class="scorebox"><input aria-label="Gols do '+esc(m.homeTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+home+'" '+(closed?'disabled':'')+' data-score="home"><span class="dash">×</span><input aria-label="Gols do '+esc(m.awayTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+away+'" '+(closed?'disabled':'')+' data-score="away"></div><div class="team away"><span class="team-name">'+esc(m.awayTeam.shortName||m.awayTeam.name)+'</span>'+logo(m.awayTeam)+'</div></div><div class="match-foot"><span class="status '+(done?'done':closed?'closed':'')+'">'+status+(p?' • salvo':'')+'</span><button class="save" data-save="'+m.id+'" '+(closed?'disabled':'')+'>'+(p?'Atualizar':'Salvar palpite')+'</button></div></article>';
  };
@@ -52,7 +52,7 @@
   const card=btn.closest('.match-card'),id=Number(btn.dataset.save),home=card.querySelector('[data-score="home"]').value,away=card.querySelector('[data-score="away"]').value;
   if(home===''||away===''||!Number.isInteger(Number(home))||!Number.isInteger(Number(away))||Number(home)<0||Number(away)<0||Number(home)>20||Number(away)>20){setMessage('Preencha os dois gols com números entre 0 e 20.',true);return;}
   btn.disabled=true;btn.textContent='Salvando...';
-  try{const response=await fetch('/api/palpites/prediction',{method:'POST',headers:{...window.__palpitesHeaders,'Content-Type':'application/json'},body:JSON.stringify({matchId:id,home:Number(home),away:Number(away)})});const saved=await response.json();if(!response.ok)throw new Error(saved.error||'Falha ao salvar');predictions[id]=saved.prediction;$('saved-count').textContent=Object.keys(predictions).length;setMessage('Palpite salvo! Você pode alterá-lo até o início da partida.',false);render();}
+  try{const response=await fetch('/api/palpites/prediction',{method:'POST',headers:{...window.__palpitesHeaders,'Content-Type':'application/json'},body:JSON.stringify({matchId:id,home:Number(home),away:Number(away)})});const saved=await response.json();if(!response.ok)throw new Error(saved.error||'Falha ao salvar');predictions[id]=saved.prediction;$('saved-count').textContent=Object.keys(predictions).length;setMessage('Palpite salvo! Você pode alterá-lo até 30 minutos antes do início da partida.',false);render();}
   catch(e){setMessage(e.message,true);btn.disabled=false;btn.textContent='Tentar novamente';}
  }));
  const render=()=>{
