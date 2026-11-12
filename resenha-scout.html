@@ -26,6 +26,7 @@
 .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0 60px}.rule{padding:16px;border:1px solid var(--line);border-radius:13px;background:#0d140f}.rule strong{display:block;color:var(--lime);font-size:13px;margin-bottom:5px}.rule span{font-size:12px;color:var(--muted)}
 .loading{text-align:center;color:var(--muted);padding:34px}.hidden{display:none!important}
 @media(max-width:760px){.site-header{width:calc(100% - 28px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}.hero{padding:36px 0 22px}.hero h1{font-size:58px}.rules{grid-template-columns:1fr}.game-shell{border-radius:16px}.guess-form button{padding:0 13px}.clue-text{font-size:14px}}
+.login-gate{max-width:560px;margin:10px auto 22px;padding:30px 24px;text-align:center;border:1px solid #52643b;border-radius:16px;background:linear-gradient(145deg,#1b291b,#101713)}.login-gate h2{margin:0 0 10px;color:var(--lime);font:900 28px/1.1 "Barlow Condensed",sans-serif}.login-gate p{margin:0 auto 20px;max-width:430px;color:var(--muted)}.login-gate-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.login-gate a{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:9px;font-weight:900}.login-gate .login-primary{background:var(--lime);color:#101810}.login-gate .login-secondary{border:1px solid #526052;background:#111a14;color:#f4f6f4}
 </style>
 </head>
 <body>
@@ -44,7 +45,7 @@
 <main class="wrap">
 <section class="hero"><div class="eyebrow">DESAFIO DIÁRIO · FUTEBOL SEM ÉPOCA</div><h1>QUEM É O <span>CRAQUE?</span></h1><p>Uma lenda ou um craque da atualidade está escondido nas pistas. Use seu conhecimento de futebol e descubra quem é em até seis tentativas.</p></section>
 <section class="game-shell" aria-live="polite">
-<div class="game-top"><div class="date-label">DESAFIO DE HOJE<strong id="challengeDate">Carregando...</strong></div><div class="status-pill" id="loginStatus">MODO CONVIDADO</div></div>
+<div class="game-top"><div class="date-label">DESAFIO DE HOJE<strong id="challengeDate">Carregando...</strong></div><div class="status-pill" id="loginStatus">ACESSO RESTRITO</div></div>
 <div id="loading" class="loading">Preparando o desafio de hoje...</div>
 <div id="game" class="hidden">
 <div class="intro"><h2>SEIS CHANCES. UMA RESPOSTA.</h2><p>Errou? Uma pista nova aparece a cada palpite errado ou quando você escolhe avançar. Cada ação consome uma tentativa.</p></div>
@@ -59,7 +60,7 @@
 <section class="rules">
 <div class="rule"><strong>01 · Um desafio por dia</strong><span>O mesmo jogador misterioso para toda a comunidade, todos os dias.</span></div>
 <div class="rule"><strong>02 · Pistas progressivas</strong><span>Palpites errados e pedidos de nova pista consomem uma tentativa.</span></div>
-<div class="rule"><strong>03 · XP para quem tem conta</strong><span>Jogue como visitante ou entre na sua conta para pontuar no ranking.</span></div>
+<div class="rule"><strong>03 · Exclusivo para cadastrados</strong><span>Entre na sua conta gratuita para participar do desafio diário e registrar seu progresso.</span></div>
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -85,9 +86,14 @@ async function auth(){
  try{const r=await fetch('/api/config/supabase',{cache:'no-store'}),c=await r.json();if(c.configured&&window.supabase){db=window.supabase.createClient(c.url,c.publishableKey);const {data}=await db.auth.getSession();session=data.session;db.auth.onAuthStateChange((_e,s)=>{session=s});}}catch(e){console.warn('Scout auth:',e)}
 }
 async function start(){
+ if(!session?.access_token){
+  $('loginStatus').textContent='ACESSO RESTRITO';
+  $('loading').innerHTML='<div class="login-gate"><h2>ESTA RESENHA É PARA QUEM FAZ PARTE!</h2><p>O Resenha Scout é exclusivo para usuários cadastrados e logados. Entre na sua conta gratuita ou crie seu cadastro para descobrir o craque do dia.</p><div class="login-gate-actions"><a class="login-primary" href="/conta">ENTRAR / CRIAR CONTA</a><a class="login-secondary" href="/">VOLTAR AO INÍCIO</a></div></div>';
+  return;
+ }
  const payload={};if(session?.access_token)payload.accessToken=session.access_token;try{const saved=JSON.parse(localStorage.getItem('resenha-scout-session')||'null');if(saved){payload.sessionId=saved.sessionId;payload.accessKey=saved.accessKey;}}catch(e){}
  const r=await fetch('/api/scout/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
- const data=await r.json();if(!r.ok)throw new Error(data.error||'Não foi possível iniciar o desafio.');
+ const data=await r.json();if(!r.ok){if(r.status===401){$('loading').innerHTML='<div class="login-gate"><h2>FAÇA LOGIN PARA CONTINUAR</h2><p>Sua sessão não está válida. Entre novamente na sua conta para acessar o Resenha Scout.</p><div class="login-gate-actions"><a class="login-primary" href="/conta">ENTRAR NA MINHA CONTA</a><a class="login-secondary" href="/">VOLTAR AO INÍCIO</a></div></div>';return;}throw new Error(data.error||'Não foi possível iniciar o desafio.');}
  gameState=data;localStorage.setItem('resenha-scout-session',JSON.stringify({sessionId:data.sessionId,accessKey:data.accessKey}));
  $('challengeDate').textContent=datePt(data.date);$('loginStatus').textContent=data.loggedIn?'CONTA CONECTADA':'MODO CONVIDADO';
  guesses=(data.guesses||[]).map(x=>x);clueNow=Math.min(6,Math.max(1,data.clueNumber||data.attempts+1));cluesRevealed=Math.min(6,Math.max(1,data.cluesRevealed||clueNow));
