@@ -57,6 +57,15 @@
     });
   }
 
+  // Link da página explicativa do Resenha Palpites em todos os menus do site.
+  const gamesMenu = document.querySelector('.site-nav .nav-dropdown .nav-dropdown-menu');
+  if (gamesMenu && !gamesMenu.querySelector('a[href="/jogos/resenha-palpites"]')) {
+    const palpitesLink = document.createElement('a');
+    palpitesLink.href = '/jogos/resenha-palpites';
+    palpitesLink.textContent = 'Resenha Palpites';
+    gamesMenu.appendChild(palpitesLink);
+  }
+
   const accountLink = document.querySelector('[data-account-link]');
 
   const updateLabel = (session) => {
