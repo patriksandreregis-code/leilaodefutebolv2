@@ -42,9 +42,9 @@
  const setMessage=(txt,error)=>{message.className='message'+(error?' error':'');message.textContent=txt;};
  const crest=url=>url?'<img src="'+esc(url)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'';
  const renderMatch=m=>{
-  const p=predictions[m.id],closed=new Date(m.utcDate).getTime()<=Date.now()||!['SCHEDULED','TIMED'].includes(m.status),done=['FINISHED','AWARDED'].includes(m.status);
+  const p=predictions[m.id],futureRound=Number(m.matchday)>currentRound,closed=futureRound||new Date(m.utcDate).getTime()<=Date.now()||!['SCHEDULED','TIMED'].includes(m.status),done=['FINISHED','AWARDED'].includes(m.status);
   const home=p?.predicted_home_score??'',away=p?.predicted_away_score??'',result=m.score&&m.score.home!==null&&m.score.away!==null?m.score.home+' × '+m.score.away:'';
-  const status=done?'Finalizado'+(result?' • '+result:''):closed?'Palpite encerrado':'Palpites abertos';
+  const status=done?'Finalizado'+(result?' • '+result:''):futureRound?'Palpites ainda não liberados':closed?'Palpite encerrado':'Palpites abertos';
   const logo=team=>team.crest?'<img class="crest" src="'+esc(team.crest)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':'<span class="crest"></span>';
   return '<article class="match-card" data-match="'+m.id+'"><div class="match-top"><strong>RODADA '+esc(m.matchday||'—')+'</strong><span>'+dateFmt(m.utcDate)+'</span></div><div class="match-body"><div class="team">'+logo(m.homeTeam)+'<span class="team-name">'+esc(m.homeTeam.shortName||m.homeTeam.name)+'</span></div><div class="scorebox"><input aria-label="Gols do '+esc(m.homeTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+home+'" '+(closed?'disabled':'')+' data-score="home"><span class="dash">×</span><input aria-label="Gols do '+esc(m.awayTeam.name)+'" type="number" min="0" max="20" step="1" inputmode="numeric" value="'+away+'" '+(closed?'disabled':'')+' data-score="away"></div><div class="team away"><span class="team-name">'+esc(m.awayTeam.shortName||m.awayTeam.name)+'</span>'+logo(m.awayTeam)+'</div></div><div class="match-foot"><span class="status '+(done?'done':closed?'closed':'')+'">'+status+(p?' • salvo':'')+'</span><button class="save" data-save="'+m.id+'" '+(closed?'disabled':'')+'>'+(p?'Atualizar':'Salvar palpite')+'</button></div></article>';
  };
@@ -92,8 +92,8 @@
   if(!load.ok)throw new Error(data.error||'Não foi possível carregar os jogos.');
   matches=data.matches||[];standings=data.standings||[];scorers=data.scorers||[];currentRound=Number(data.currentMatchday)||1;
   (data.predictions||[]).forEach(p=>predictions[p.match_id]=p);
-  const rounds=[...new Set(matches.map(m=>m.matchday).filter(n=>Number.isInteger(n)&&n<=currentRound))].sort((a,b)=>a-b);
-  rounds.forEach(n=>{const o=document.createElement('option');o.value=String(n);o.textContent='Rodada '+n;roundSelect.appendChild(o);});
+  const rounds=[...new Set(matches.map(m=>m.matchday).filter(n=>Number.isInteger(n)))].sort((a,b)=>a-b);
+  rounds.forEach(n=>{const o=document.createElement('option');o.value=String(n);o.textContent='Rodada '+n+(n>currentRound?' • futura':'');roundSelect.appendChild(o);});
   roundSelect.value=String(rounds.includes(currentRound)?currentRound:(rounds[0]||1));
   $('saved-count').textContent=Object.keys(predictions).length;
   renderStandings();renderScorers();roundSelect.addEventListener('change',render);render();
