@@ -129,3 +129,37 @@ left join xp x on x.user_id=g.user_id and x.game_key=g.game_key
 left join results r on r.user_id=g.user_id and r.game_key=g.game_key;
 
 grant select on public.player_rankings, public.player_game_rankings to anon, authenticated;
+
+
+-- Remove diariamente contas que nunca confirmaram o e-mail após 7 dias.
+create or replace function public.cleanup_unconfirmed_resenha_users()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  removed_count integer := 0;
+begin
+  delete from public.scout_sessions s
+  using auth.users u
+  where s.user_id = u.id
+    and u.email_confirmed_at is null
+    and u.created_at < now() - interval '7 days';
+
+  delete from auth.users
+  where email_confirmed_at is null
+    and created_at < now() - interval '7 days';
+
+  get diagnostics removed_count = row_count;
+  return removed_count;
+end;
+$$;
+
+revoke all on function public.cleanup_unconfirmed_resenha_users() from public, anon, authenticated;
+
+select cron.schedule(
+  'resenha-cleanup-unconfirmed-users',
+  '17 3 * * *',
+  $job$select public.cleanup_unconfirmed_resenha_users();$job$
+);
