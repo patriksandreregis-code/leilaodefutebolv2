@@ -29,22 +29,25 @@ header{height:72px;display:flex;align-items:center;justify-content:space-between
 <a class="home-cta" data-account-link href="/conta">Criar conta</a>
 </nav></header>
 <main class="wrap">
-<section class="hero"><div class="eyebrow">Área exclusiva para cadastrados</div><h1>RESENHA <span>STOP</span></h1><p>Escolha sua versão, reúna os amigos e mostre quem tem as melhores respostas. Uma letra, várias categorias e muita resenha.</p></section>
+<section class="hero"><div class="eyebrow">Multiplayer para jogar com os amigos</div><h1>RESENHA <span>STOP</span></h1><p>Escolha sua versão, reúna os amigos e mostre quem tem as melhores respostas. Uma letra, várias categorias e muita resenha.</p></section>
 <section class="layout">
 <aside class="panel" id="setup">
 <h2>Monte sua partida</h2>
-<div id="loginNotice" class="login-note hidden">Para jogar o Resenha Stop, entre em uma conta com e-mail confirmado. <a href="/conta" style="color:var(--lime);font-weight:900">Entrar ou criar conta →</a></div>
-<div id="setupControls">
-<div class="field"><label>Seu nome na partida</label><input id="playerName" maxlength="16" placeholder="Ex.: Torcedor"></div>
+<div class="field"><label>Seu nome ou apelido</label><input id="playerName" maxlength="16" placeholder="Como deseja aparecer na partida?" autocomplete="nickname"></div>
 <div class="field"><label>Escolha o modo</label>
 <button class="mode active" data-mode="classic"><strong>Stop Clássico</strong><small>Nome, cidade, animal, fruta, comida, objeto...</small></button>
 <button class="mode" data-mode="football"><strong>Stop Futebol</strong><small>Jogador, clube, estádio, seleção, técnico...</small></button></div>
 <div class="field"><label>Quantidade de rodadas</label><select id="roundCount"><option value="3">3 rodadas</option><option value="5" selected>5 rodadas</option><option value="7">7 rodadas</option><option value="10">10 rodadas</option></select></div>
-<div class="actions"><button class="btn" id="createBtn">Criar sala</button></div>
-<div class="field"><label>Entrar em uma sala</label><input id="roomCode" maxlength="6" placeholder="Código da sala" autocapitalize="characters"></div>
-<div class="actions"><button class="btn secondary" id="joinBtn">Entrar com código</button></div>
+<p class="hint">O anfitrião precisa estar logado com e-mail confirmado para criar a sala. Os convidados podem entrar apenas com nome e código, sem cadastro.</p>
+<div class="field"><label>O que você deseja fazer?</label>
+<button class="mode active" id="createBtn" type="button"><strong>＋ Criar sala</strong><small>Comece uma nova partida. O código será gerado automaticamente.</small></button>
+<button class="mode" id="showJoinBtn" type="button"><strong>↪ Entrar em sala</strong><small>Já tem um código? Informe para entrar na partida dos seus amigos.</small></button></div>
+<div id="joinCodeBox" class="hidden">
+<div class="field"><label for="roomCode">Código da sala existente</label><input id="roomCode" maxlength="6" placeholder="Digite o código recebido" autocapitalize="characters" autocomplete="off"></div>
+<div class="actions"><button class="btn" id="joinBtn">Entrar na sala</button><button class="btn secondary" id="backJoinBtn">Voltar</button></div>
+</div>
 <p class="hint">Partidas privadas para 2 a 8 jogadores. Compartilhe o código com seus amigos.</p>
-</div><div class="status" id="status" aria-live="polite"></div>
+<div class="status" id="status" aria-live="polite"></div>
 </aside>
 <section class="panel gamepanel">
 <div id="emptyState"><div class="gamehead"><h2>Sua próxima resenha começa aqui</h2><span class="pill">2–8 JOGADORES</span></div><p class="muted">Crie uma sala ou entre com o código enviado por um amigo. O anfitrião escolhe quando iniciar a partida.</p><div class="letterbox"><small>PRONTO PARA O DESAFIO?</small><div class="letter">STOP!</div></div><p class="muted">No Stop, cada resposta precisa começar com a letra sorteada. Resposta válida e exclusiva vale 10 pontos; resposta repetida vale 5.</p></div>
@@ -66,13 +69,30 @@ header{height:72px;display:flex;align-items:center;justify-content:space-between
 </section>
 </main>
 <footer><div class="wrap">Resenha Stop · Um jogo do Resenha do Fut.</div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
 let mode='classic',socket=null,state=null,playerId='',reconnectToken='',draftTimer=null,lastSentDraft='';
-const getAccessToken=()=>{try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||!k.endsWith('-auth-token'))continue;const d=JSON.parse(localStorage.getItem(k)||'{}');if(d.access_token)return d.access_token;}}catch(_){}return '';};
-const token=getAccessToken();
-if(!token){$('loginNotice').classList.remove('hidden');$('setupControls').classList.add('hidden');}
+let stopSupabase=null,stopSession=null;
+async function getStopAccessToken(){
+ try{
+  if(!stopSupabase){
+   if(!window.supabase||!window.supabase.createClient)throw new Error('SDK indisponível');
+   const response=await fetch('/api/config/supabase',{cache:'no-store'});
+   const cfg=await response.json();
+   if(!cfg.configured)throw new Error('Supabase não configurado');
+   stopSupabase=window.supabase.createClient(cfg.url,cfg.publishableKey);
+  }
+  const {data,error}=await stopSupabase.auth.getSession();
+  if(error)throw error;
+  stopSession=data.session;
+  return stopSession&&stopSession.user&&stopSession.user.email_confirmed_at?stopSession.access_token:'';
+ }catch(_){
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k||!k.endsWith('-auth-token'))continue;const d=JSON.parse(localStorage.getItem(k)||'{}');if(d.access_token&&d.user&&d.user.email_confirmed_at)return d.access_token;}}catch(__){}
+  return '';
+ }
+}
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));}));
 function status(t){$('status').textContent=t||'';}
 function connect(payload){
@@ -94,7 +114,7 @@ function render(){
  $('roomCodeDisplay').textContent=state.code;
  $('roomTitle').textContent=state.mode==='football'?'Stop Futebol':'Stop Clássico';
  $('roomSubtitle').textContent='Rodada '+Math.max(1,state.round)+' de '+state.totalRounds;
- $('players').innerHTML=state.players.map(p=>'<span class="player '+(p.host?'host':'')+'">'+escapeHtml(p.name)+(p.online?'':' · desconectado')+(p.submitted?' · pronto':'')+'</span>').join('');
+ $('players').innerHTML=state.players.map(p=>'<span class="player '+(p.host?'host':'')+'">'+escapeHtml(p.name)+(p.online?'':' · desconectado')+(p.submitted?' · pronto':'')+(p.authenticated?' · conta':' · visitante')+'</span>').join('');
  const isHost=state.players.some(p=>p.id===playerId&&p.host);
  $('lobbyControls').classList.toggle('hidden',state.phase!=='lobby');
  $('playingArea').classList.toggle('hidden',state.phase!=='playing');
@@ -120,15 +140,17 @@ function render(){
   $('nextBtn').textContent=state.round>=state.totalRounds?'Ver placar final':'Próxima rodada';$('nextBtn').classList.toggle('hidden',!isHost);
  }else if(state.phase==='finished'){$('finalScores').innerHTML=table(state.scores);}
 }
-$('createBtn').addEventListener('click',()=>{if(!token){status('Entre na sua conta para jogar.');return;}const name=$('playerName').value.trim();if(name.length<2){status('Informe seu nome.');return;}status('Criando sala…');connect({type:'create',mode,rounds:Number($('roundCount').value),name,accessToken:token});});
-$('joinBtn').addEventListener('click',()=>{if(!token){status('Entre na sua conta para jogar.');return;}const name=$('playerName').value.trim(),code=$('roomCode').value.trim().toUpperCase();if(name.length<2||code.length!==6){status('Informe seu nome e o código de 6 caracteres.');return;}status('Entrando na sala…');connect({type:'join',name,code,accessToken:token});});
+$('createBtn').addEventListener('click',async()=>{const name=$('playerName').value.trim();if(name.length<2){status('Informe seu nome ou apelido.');return;}status('Verificando sua conta…');const accessToken=await getStopAccessToken();if(!accessToken){status('Para criar uma sala, entre em uma conta com e-mail confirmado.');return;}status('Criando sua sala…');connect({type:'create',mode,rounds:Number($('roundCount').value),name,accessToken});});
+$('showJoinBtn').addEventListener('click',()=>{$('joinCodeBox').classList.remove('hidden');$('showJoinBtn').classList.add('hidden');$('roomCode').focus();});
+$('backJoinBtn').addEventListener('click',()=>{$('joinCodeBox').classList.add('hidden');$('showJoinBtn').classList.remove('hidden');$('roomCode').value='';status('');});
+$('joinBtn').addEventListener('click',async()=>{const name=$('playerName').value.trim(),code=$('roomCode').value.trim().toUpperCase();if(name.length<2||code.length!==6){status('Informe seu nome e o código de 6 caracteres.');return;}status('Conectando à sala…');const accessToken=await getStopAccessToken();connect({type:'join',name,code,accessToken});});
 $('roomCode').addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6));
 $('startBtn').addEventListener('click',()=>send({type:'start'}));
 $('stopBtn').addEventListener('click',()=>{clearTimeout(draftTimer);const a=answers();send({type:'stop',answers:a});$('stopBtn').disabled=true;});
 $('nextBtn').addEventListener('click',()=>send({type:'next'}));
 ['leaveBtn','leaveResultsBtn','leaveFinalBtn'].forEach(id=>$(id).addEventListener('click',()=>send({type:'leave'})));
 setInterval(()=>{if(state&&state.phase==='playing'){const secs=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('clock').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');}},250);
-try{const saved=JSON.parse(localStorage.getItem('resenhaStopRoom')||'null');if(saved&&saved.code&&saved.reconnectToken&&token){status('Recuperando sua sala…');connect({type:'reconnect',code:saved.code,reconnectToken:saved.reconnectToken});}}catch(_){}
+try{const saved=JSON.parse(localStorage.getItem('resenhaStopRoom')||'null');if(saved&&saved.code&&saved.reconnectToken){status('Recuperando sua sala…');connect({type:'reconnect',code:saved.code,reconnectToken:saved.reconnectToken});}}catch(_){}
 })();
 </script>
 <script src="/nav.js" defer></script><script>(()=>{document.querySelectorAll('.nav-dropdown').forEach(d=>{const b=d.querySelector('.nav-dropdown-toggle');b.addEventListener('click',()=>{const open=d.classList.toggle('open');b.setAttribute('aria-expanded',String(open))})})})();</script></body></html>
