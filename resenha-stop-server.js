@@ -53,9 +53,8 @@ function addPlayer(room,ws,user,name) {
 function finishRound(room,reason) {
   if(room.phase!=='playing') return;
   clearRoundTimer(room); room.phase='results'; room.winner=reason||'Tempo encerrado';
-  const submitted=room.players.filter(p=>p.submitted);
   const totals=new Map();
-  for(const p of submitted) for(const [id,value] of Object.entries(p.answers||{})){
+  for(const p of room.players) for(const [id,value] of Object.entries(p.answers||{})){
     const answer=String(value||'').trim();
     if(answer.length<2 || norm(answer)[0]!==norm(room.letter)[0]) continue;
     const key=id+'|'+norm(answer); totals.set(key,(totals.get(key)||0)+1);
@@ -121,6 +120,14 @@ async function connect(ws) {
       if(room.phase!=='lobby'||room.players.length<2)return fail('É necessário ter pelo menos 2 jogadores para começar.');
       room.round=1;startRound(room);return;
     }
+    if(m.type==='draft'){
+      if(room.phase!=='playing'||player.submitted)return;
+      const incoming=m.answers&&typeof m.answers==='object'?m.answers:{};
+      const allowed=new Set(CATEGORIES[room.mode].map(x=>x[0]));
+      const answers={};
+      for(const [id,value] of Object.entries(incoming))if(allowed.has(id))answers[id]=String(value||'').trim().slice(0,60);
+      player.answers=answers;return;
+    }
     if(m.type==='submit'){
       if(room.phase!=='playing'||player.submitted)return fail('Esta rodada já foi encerrada para você.');
       const incoming=m.answers&&typeof m.answers==='object'?m.answers:{};
@@ -157,7 +164,7 @@ async function connect(ws) {
   ws.on('close',()=>{
     const membership=memberships.get(ws);if(!membership)return;
     const {room,player}=membership;memberships.delete(ws);player.ws=null;
-    if(!room.closed){broadcast(room);if(room.players.every(p=>!p.ws))setTimeout(()=>{if(room.players.every(p=>!p.ws))closeRoom(room,'Sala encerrada por inatividade.');},60000);}
+    if(!room.closed){if(room.players[0]===player){const next=room.players.find(p=>p.ws);if(next){player.host=false;next.host=true;}}broadcast(room);if(room.players.every(p=>!p.ws))setTimeout(()=>{if(room.players.every(p=>!p.ws))closeRoom(room,'Sala encerrada por inatividade.');},60000);}
   });
 }
 module.exports={connect};
