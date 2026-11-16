@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d0b">
 <meta name="robots" content="noindex,nofollow,noarchive">
-<title>Resenha Palpites — Área de testes</title>
+<title>Crava — Área de testes</title>
 <link rel="icon" href="/favicon-32x32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -85,7 +85,7 @@
   const configRes=await fetch('/api/config/supabase',{cache:'no-store'}),config=await configRes.json();
   if(!config.configured||!window.supabase?.createClient){showGate('Acesso indisponível','A conexão com a conta ainda não está configurada.','/conta');return;}
   const client=window.supabase.createClient(config.url,config.publishableKey),{data:{session}}=await client.auth.getSession();
-  if(!session){showGate('Entre na sua conta','Faça login para acessar a prévia privada do Resenha Palpites.','/conta');return;}
+  if(!session){showGate('Entre na sua conta','Faça login para acessar a prévia privada do Crava.','/conta');return;}
   window.__palpitesHeaders={Authorization:'Bearer '+session.access_token};
   const check=await fetch('/api/palpites/me',{headers:window.__palpitesHeaders,cache:'no-store'});
   if(!check.ok){showGate('Acesso restrito','Sua conta não está autorizada a visualizar esta área de testes.');return;}
