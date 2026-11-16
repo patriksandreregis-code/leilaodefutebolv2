@@ -274,6 +274,65 @@ const server = http.createServer(async (q, s) => {
   const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
   if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
 
+  if (pth === '/api/crava/ranking' && q.method === 'GET') {
+    const sendCravaJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60, stale-while-revalidate=120' }); s.end(JSON.stringify(data)); };
+    const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const apiToken = process.env.FOOTBALL_DATA_API_TOKEN;
+    if (!secret || !process.env.SUPABASE_URL || !apiToken) return sendCravaJson(503, { error: 'Ranking Crava temporariamente indisponível.' });
+    try {
+      const season = 2026, base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+      const dbHeaders = { apikey: secret, Authorization: 'Bearer ' + secret };
+      if (!globalThis.__resenhaPalpitesCache || Date.now() - globalThis.__resenhaPalpitesCache.at > 5 * 60 * 1000) {
+        const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) });
+        if (!response.ok) throw new Error('football-data.org HTTP ' + response.status);
+        const data = await response.json();
+        globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday: resolveCravaCurrentMatchday(data.matches || []),
+          matches: (data.matches || []).map(m => ({ id:m.id, matchday:m.matchday, utcDate:m.utcDate, status:m.status,
+            homeTeam:{id:m.homeTeam && m.homeTeam.id,name:m.homeTeam && m.homeTeam.name,shortName:m.homeTeam && m.homeTeam.shortName,crest:m.homeTeam && m.homeTeam.crest},
+            awayTeam:{id:m.awayTeam && m.awayTeam.id,name:m.awayTeam && m.awayTeam.name,shortName:m.awayTeam && m.awayTeam.shortName,crest:m.awayTeam && m.awayTeam.crest},
+            score:m.score && m.score.fullTime ? {home:m.score.fullTime.home,away:m.score.fullTime.away}:null })) };
+      }
+      const allPredictions = [];
+      for (let offset=0;;offset+=1000) {
+        const response = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,user_id,predicted_home_score,predicted_away_score&season=eq.' + season + '&order=matchday.asc&limit=1000&offset=' + offset, {headers:dbHeaders});
+        if (!response.ok) throw new Error('Supabase predictions HTTP ' + response.status);
+        const batch = await response.json(); allPredictions.push(...batch); if (batch.length < 1000) break;
+      }
+      const userIds = [...new Set(allPredictions.map(p=>p.user_id).filter(Boolean))];
+      let profiles=[];
+      for(let i=0;i<userIds.length;i+=100) {
+        const ids=userIds.slice(i,i+100);
+        const response=await fetch(base+'profiles?select=id,username,display_name&id=in.('+ids.join(',')+')',{headers:dbHeaders});
+        if(!response.ok) throw new Error('Supabase profiles HTTP '+response.status);
+        profiles.push(...await response.json());
+      }
+      const profileById=new Map(profiles.map(p=>[p.id,p]));
+      const matchById=new Map(globalThis.__resenhaPalpitesCache.matches.map(m=>[m.id,m]));
+      const byUser=new Map();
+      for(const prediction of allPredictions) {
+        const points=scoreCravaPrediction(prediction,matchById.get(Number(prediction.match_id)));
+        if(points===null) continue;
+        const profile=profileById.get(prediction.user_id);
+        const name=String(profile&&(profile.display_name||profile.username)||'Torcedor').trim();
+        const row=byUser.get(prediction.user_id)||{userId:prediction.user_id,name,points:0,exact:0,seven:0,matches:0,rounds:{}};
+        row.points+=points; row.matches++; if(points===10)row.exact++; if(points===7)row.seven++;
+        const round=String(prediction.matchday||'0'); row.rounds[round]=(row.rounds[round]||0)+points; byUser.set(prediction.user_id,row);
+      }
+      const sortRows=rows=>rows.sort((a,b)=>b.points-a.points||b.exact-a.exact||b.seven-a.seven||b.matches-a.matches||a.name.localeCompare(b.name,'pt-BR'))
+        .map((r,i)=>({position:i+1,name:r.name,points:r.points,exact:r.exact,seven:r.seven,matches:r.matches}));
+      const overall=sortRows([...byUser.values()]);
+      const byRound={};
+      for(const round of [...new Set(allPredictions.map(p=>String(p.matchday||'0')))]) {
+        byRound[round]=sortRows([...byUser.values()].filter(r=>Object.prototype.hasOwnProperty.call(r.rounds,round))
+          .map(r=>({...r,points:r.rounds[round],matches:allPredictions.filter(p=>p.user_id===r.userId&&String(p.matchday||'0')===round&&scoreCravaPrediction(p,matchById.get(Number(p.match_id)))!==null).length})));
+      }
+      return sendCravaJson(200,{season,currentMatchday:globalThis.__resenhaPalpitesCache.currentMatchday,overall,byRound});
+    } catch(error) {
+      console.error('[Crava ranking público]',error.message);
+      return sendCravaJson(502,{error:'Não foi possível carregar o Ranking Crava agora.'});
+    }
+  }
+
   if ((pth === '/api/palpites/me' || pth === '/api/palpites/matches' || pth === '/api/palpites/prediction') && (q.method === 'GET' || q.method === 'POST')) {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     const token = String(q.headers.authorization || '').replace(/^Bearer\s+/i, '');
