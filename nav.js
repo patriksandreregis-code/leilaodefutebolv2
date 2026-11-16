@@ -68,7 +68,7 @@
 
   if (gamesMenu && !gamesMenu.querySelector('a[href="/resenha-stop"]')) {
     const stopLink = document.createElement('a');
-    stopLink.href = '/resenha-stop';
+    stopLink.href = '/jogos/resenha-stop';
     stopLink.textContent = 'Resenha Stop';
     gamesMenu.appendChild(stopLink);
   }
