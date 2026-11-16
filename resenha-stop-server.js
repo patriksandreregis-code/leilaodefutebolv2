@@ -27,7 +27,7 @@ async function verifyUser(accessToken) {
     return user && user.id && user.email_confirmed_at ? user : null;
   } catch (error) { console.error('[Resenha Stop] Falha ao validar conta:', error.message); return null; }
 }
-function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.host, score:p.score, submitted:!!p.submitted }; }
+function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.host, authenticated:!!p.userId, score:p.score, submitted:!!p.submitted }; }
 function publicState(room) {
   return {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
@@ -46,9 +46,9 @@ function closeRoom(room, reason) {
   room.players.forEach(p=>{ if(p.ws){memberships.delete(p.ws);send(p.ws,{type:'closed',message:reason||'Sala encerrada.'});try{p.ws.close(1000,'Sala encerrada');}catch(_){}}});
 }
 function addPlayer(room,ws,user,name) {
-  const p={id:crypto.randomBytes(8).toString('hex'),userId:user.id,name,ws,host:room.players.length===0,score:0,roundPoints:0,answers:{},reconnectToken:makeToken(),submitted:false};
+  const p={id:crypto.randomBytes(8).toString('hex'),userId:user?.id||null,authenticated:!!user,name,ws,host:room.players.length===0,score:0,roundPoints:0,answers:{},reconnectToken:makeToken(),submitted:false};
   room.players.push(p);memberships.set(ws,{room,player:p});
-  send(ws,{type:'joined',code:room.code,playerId:p.id,reconnectToken:p.reconnectToken,name:p.name});
+  send(ws,{type:'joined',code:room.code,playerId:p.id,reconnectToken:p.reconnectToken,name:p.name,authenticated:p.authenticated});
 }
 function finishRound(room,reason) {
   if(room.phase!=='playing') return;
@@ -87,11 +87,11 @@ async function connect(ws) {
     if(m.type==='create'||m.type==='join'){
       if(memberships.has(ws))return fail('Você já está em uma sala.');
       const user=await verifyUser(String(m.accessToken||''));
-      if(!user)return fail('Entre em uma conta com e-mail confirmado para jogar.');
       const name=cleanName(m.name);
       if(name.length<2)return fail('Informe um nome com pelo menos 2 caracteres.');
-      if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
       if(m.type==='create'){
+        if(!user)return fail('Para criar uma sala, entre em uma conta com e-mail confirmado.');
+        if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
         const room={code,mode,phase:'lobby',players:[],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
@@ -101,7 +101,8 @@ async function connect(ws) {
       const room=rooms.get(code);
       if(!room||room.closed)return fail('Sala não encontrada. Confira o código.');
       if(room.phase!=='lobby'||room.players.length>=8)return fail('Essa sala já começou ou está cheia.');
-      if(room.players.some(p=>p.userId===user.id))return fail('Você já está nesta sala.');
+      if(user&&room.players.some(p=>p.userId===user.id))return fail('Você já está nesta sala.');
+      if(room.players.some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')))return fail('Esse apelido já está sendo usado na sala. Escolha outro.');
       addPlayer(room,ws,user,name);broadcast(room);return;
     }
     if(m.type==='reconnect'){
