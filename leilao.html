@@ -171,7 +171,7 @@ async function loadAuctionAuth() {
   const { data, error } = await auctionSupabase.auth.getSession();
   if (error) throw error;
   auctionSession = data.session;
-  auctionSupabase.auth.onAuthStateChange((_event, session) => { auctionSession = session; updateAuctionVoiceAccess(session); });
+  auctionSupabase.auth.onAuthStateChange((_event, session) => { auctionSession = session; updateAuctionVoiceAccess(session); if (!(session && session.access_token && session.user && session.user.email_confirmed_at) && auctionVoiceRoom) leaveAuctionVoice(); });
   return auctionSession;
 }
 const $ = id => document.getElementById(id);
