@@ -7,7 +7,7 @@ const makeCode = () => crypto.randomBytes(3).toString('hex').toUpperCase();
 const makeToken = () => crypto.randomBytes(24).toString('base64url');
 const cleanName = value => String(value || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
 const norm = value => String(value || '').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVZ'.split('');
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const CATEGORIES = {
   football: [
     ['player','Jogador'],['club','Clube de futebol'],['stadium','Estádio'],['country','País'],['coach','Técnico'],['position','Posição'],['competition','Competição'],['nickname','Apelido de jogador']
@@ -31,7 +31,7 @@ function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.
 function publicState(room) {
   return {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
-    letter:room.letter, deadline:room.deadline, categories:room.categories,
+    letter:room.letter, deadline:room.deadline, categories:room.categories, allowedLetters:room.allowedLetters,
     players:room.players.map(playerView),
     answers:room.phase==='results' ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
@@ -72,7 +72,7 @@ function finishRound(room,reason) {
 }
 function startRound(room) {
   clearRoundTimer(room);
-  room.phase='playing'; room.letter=LETTERS[Math.floor(Math.random()*LETTERS.length)];
+  room.phase='playing'; const pool=room.allowedLetters&&room.allowedLetters.length?room.allowedLetters:LETTERS; room.letter=pool[Math.floor(Math.random()*pool.length)];
   room.deadline=Date.now()+60000; room.winner=null;
   room.players.forEach(p=>{p.answers={};p.roundPoints=0;p.submitted=false;});
   room.timer=setTimeout(()=>finishRound(room,'Tempo esgotado'),60000);
@@ -94,7 +94,7 @@ async function connect(ws) {
         if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
+        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -116,6 +116,14 @@ async function connect(ws) {
     if(!membership)return fail('Crie ou entre em uma sala primeiro.');
     const {room,player}=membership;
     if(room.closed||!room.players.includes(player))return fail('Sala indisponível.');
+    if(m.type==='letters_update'){
+      if(!player.host)return fail('Somente o anfitrião pode escolher as letras.');
+      if(room.phase!=='lobby')return fail('As letras só podem ser alteradas antes da partida.');
+      const requested=Array.isArray(m.letters)?m.letters:[];
+      const selected=[...new Set(requested.map(x=>String(x).toUpperCase()).filter(x=>LETTERS.includes(x)))];
+      if(!selected.length)return fail('Mantenha pelo menos uma letra selecionada.');
+      room.allowedLetters=selected;broadcast(room);return;
+    }
     if(m.type==='category_add'){
       if(!player.host)return fail('Somente o anfitrião pode alterar as categorias.');
       if(room.phase!=='lobby')return fail('As categorias só podem ser alteradas antes da partida.');
@@ -145,6 +153,7 @@ async function connect(ws) {
     if(m.type==='start'){
       if(!player.host)return fail('Somente o anfitrião pode iniciar.');
       if(room.phase!=='lobby'||room.players.length<2)return fail('É necessário ter pelo menos 2 jogadores para começar.');
+      if(!room.allowedLetters||!room.allowedLetters.length)return fail('Selecione pelo menos uma letra.');
       room.round=1;startRound(room);return;
     }
     if(m.type==='draft'){
