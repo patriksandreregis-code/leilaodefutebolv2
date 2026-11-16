@@ -27,7 +27,7 @@ async function verifyUser(accessToken) {
     return user && user.id && user.email_confirmed_at ? user : null;
   } catch (error) { console.error('[Resenha Stop] Falha ao validar conta:', error.message); return null; }
 }
-function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.host, authenticated:!!p.userId, score:p.score, submitted:!!p.submitted }; }
+function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.host, authenticated:!!p.userId, xpEligible:!!p.userId, score:p.score, submitted:!!p.submitted }; }
 function publicState(room) {
   return {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
