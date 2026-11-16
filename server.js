@@ -5,6 +5,7 @@ const { AccessToken } = require('livekit-server-sdk');
 const POOL = require('./craques.js'), copa = require('./copa.js');
 const beatball = require('./resenha-ball-server.js');
 const chessServer = require('./resenha-chess-server.js');
+const stopServer = require('./resenha-stop-server.js');
 const { recordCompletedMatch } = require('./activity-counter.js');
 let SQUADS = [];
 try { SQUADS = new Function(fs.readFileSync(path.join(__dirname, 'dados.js'), 'utf8') + ';return SQUADS')(); } catch (e) { console.log('dados.js não carregado:', e.message); }
@@ -258,7 +259,7 @@ function removePlayer(r, id, why) {
 }
 
 // ===== HTTP / WebSocket =====
-const FILES = { '/jogos/crava': 'jogos/resenha-palpites.html', '/jogos/resenha-palpites': 'jogos/resenha-palpites.html', '/crava': 'palpites-teste.html', '/palpites-teste': 'palpites-teste.html', '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js', '/scout': 'resenha-scout.html', '/jogos/resenha-scout': 'jogos/resenha-scout.html' };
+const FILES = { '/jogos/crava': 'jogos/resenha-palpites.html', '/jogos/resenha-palpites': 'jogos/resenha-palpites.html', '/crava': 'palpites-teste.html', '/palpites-teste': 'palpites-teste.html', '/': 'index.html', '/resenha-ball': 'resenha-ball.html', '/resenha-x': 'resenha-x.html', '/resenha-stop': 'resenha-stop.html', '/beatball': 'resenha-ball.html', '/leilao': 'leilao.html', '/dado': 'dado.html', '/manager': 'manager.html', '/manager-teste': 'manager-teste.html', '/jogos/leilao-de-futebol': 'jogos/leilao-de-futebol.html', '/jogos/dado-da-copa': 'jogos/dado-da-copa.html', '/jogos/resenha-ball': 'jogos/resenha-ball.html', '/jogos/resenha-x': 'jogos/resenha-x.html', '/jogos/resenha-manager': 'jogos/resenha-manager.html', '/plataforma': 'plataforma.html', '/sobre': 'sobre.html', '/conta': 'conta.html', '/ranking': 'ranking.html', '/ranking/como-funciona': 'ranking-como-funciona.html', '/selecoes': 'selecoes.html', '/dados.js': 'dados.js', '/logo.png': 'logo.png', '/favicon.ico': 'favicon.ico', '/favicon-16x16.png': 'favicon-16x16.png', '/favicon-32x32.png': 'favicon-32x32.png', '/apple-touch-icon.png': 'apple-touch-icon.png', '/android-chrome-192x192.png': 'android-chrome-192x192.png', '/android-chrome-512x512.png': 'android-chrome-512x512.png', '/site.webmanifest': 'site.webmanifest', '/og-image.png': 'og-image.png', '/nav.js': 'nav.js', '/scout': 'resenha-scout.html', '/jogos/resenha-scout': 'jogos/resenha-scout.html' };
 const SEC = {
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY',
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=(), payment=()',
@@ -773,6 +774,7 @@ wss.on('connection', (ws, req) => {
   console.log('[WS] Conexão aberta:', wsPath, req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'IP desconhecido');
   if (wsPath === '/resenha-ball-ws') return beatball.connect(ws);
   if (wsPath === '/resenha-chess-ws') return chessServer.connect(ws);
+  if (wsPath === '/resenha-stop-ws') return stopServer.connect(ws);
   const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
   ipConns[ip] = (ipConns[ip] || 0) + 1;
   ws.on('close', () => { ipConns[ip] = Math.max(0, (ipConns[ip] || 1) - 1); });
