@@ -42,7 +42,7 @@ function broadcast(room) { const state=publicState(room); room.players.forEach(p
 function clearRoundTimer(room) { if(room.timer) clearTimeout(room.timer); room.timer=null; }
 function closeRoom(room, reason) {
   if(!room || room.closed) return;
-  room.closed=true; clearRoundTimer(room); rooms.delete(room.code);
+  room.closed=true; clearRoundTimer(room); clearTimeout(room.expiry); rooms.delete(room.code);
   room.players.forEach(p=>{ if(p.ws){memberships.delete(p.ws);send(p.ws,{type:'closed',message:reason||'Sala encerrada.'});try{p.ws.close(1000,'Sala encerrada');}catch(_){}}});
 }
 function addPlayer(room,ws,user,name) {
@@ -94,7 +94,7 @@ async function connect(ws) {
       if(m.type==='create'){
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),closed:false};
+        const room={code,mode,phase:'lobby',players:[],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -109,7 +109,7 @@ async function connect(ws) {
       const p=room&&room.players.find(x=>x.reconnectToken===String(m.reconnectToken||''));
       if(!p)return fail('Não foi possível recuperar a sala. Crie ou entre novamente.');
       if(p.ws){memberships.delete(p.ws);try{p.ws.close(4001,'Sessão reconectada');}catch(_){}}
-      p.ws=ws;memberships.set(ws,{room,player:p});send(ws,{type:'joined',code:room.code,playerId:p.id,reconnectToken:p.reconnectToken,name:p.name});broadcast(room);return;
+      p.ws=ws;if(room.players.every(x=>x.ws)){clearTimeout(room.expiry);room.expiry=null;}memberships.set(ws,{room,player:p});send(ws,{type:'joined',code:room.code,playerId:p.id,reconnectToken:p.reconnectToken,name:p.name});broadcast(room);return;
     }
     const membership=memberships.get(ws);
     if(!membership)return fail('Crie ou entre em uma sala primeiro.');
@@ -164,7 +164,7 @@ async function connect(ws) {
   ws.on('close',()=>{
     const membership=memberships.get(ws);if(!membership)return;
     const {room,player}=membership;memberships.delete(ws);player.ws=null;
-    if(!room.closed){if(player.host){const next=room.players.find(p=>p.ws);if(next){player.host=false;next.host=true;}}broadcast(room);if(room.players.every(p=>!p.ws))setTimeout(()=>{if(room.players.every(p=>!p.ws))closeRoom(room,'Sala encerrada por inatividade.');},60000);}
+    if(!room.closed){if(player.host){const next=room.players.find(p=>p.ws);if(next){player.host=false;next.host=true;}}broadcast(room);clearTimeout(room.expiry);room.expiry=setTimeout(()=>{if(room.players.some(p=>!p.ws))closeRoom(room,'A sala foi encerrada porque um jogador não retornou.');},60000);}
   });
 }
 module.exports={connect};
