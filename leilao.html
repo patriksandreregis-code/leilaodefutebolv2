@@ -205,7 +205,7 @@ const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')
 
 const inviteCode = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
 $('room').value = inviteCode;
-if (inviteCode) $('joinCodeBox').hidden = false;
+if (inviteCode) { $('joinCodeBox').hidden = false; $('joinActions').hidden = true; }
 let token = '', lastMsg = Date.now(), retry = null, jt = null, authFailed = false; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
 const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; showJoining('Reconectando à sua sala…'); connect(); }
 
