@@ -8,6 +8,10 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- Apelidos públicos únicos, sem diferenciar maiúsculas/minúsculas ou espaços externos.
+create unique index if not exists profiles_display_name_unique_ci
+  on public.profiles (lower(btrim(display_name)));
+
 create table if not exists public.game_results (
   id bigint generated always as identity primary key,
   user_id uuid not null references public.profiles(id) on delete cascade,
