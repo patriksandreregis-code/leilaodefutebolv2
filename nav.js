@@ -57,12 +57,12 @@
     });
   }
 
-  // Link da página explicativa do Resenha Palpites em todos os menus do site.
+  // Link da página explicativa do Crava em todos os menus do site.
   const gamesMenu = document.querySelector('.site-nav .nav-dropdown .nav-dropdown-menu');
-  if (gamesMenu && !gamesMenu.querySelector('a[href="/jogos/resenha-palpites"]')) {
+  if (gamesMenu && !gamesMenu.querySelector('a[href="/jogos/crava"]')) {
     const palpitesLink = document.createElement('a');
-    palpitesLink.href = '/jogos/resenha-palpites';
-    palpitesLink.textContent = 'Resenha Palpites';
+    palpitesLink.href = '/jogos/crava';
+    palpitesLink.textContent = 'Crava';
     gamesMenu.appendChild(palpitesLink);
   }
 
