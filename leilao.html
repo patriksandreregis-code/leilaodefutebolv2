@@ -41,7 +41,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 a{color:var(--mu)}.mu{color:var(--mu)}.ok{color:var(--ok)}.bad{color:var(--bad)}
 .wrap{width:min(1120px,calc(100% - 40px));margin:0 auto;padding:1.25rem 0}
 [hidden]{display:none!important}
-#join,#joining{max-width:420px;margin:7vh auto}#join{display:grid;gap:.7rem}
+#join,#joining{max-width:420px;margin:7vh auto}
+.join-actions{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:.4rem}.join-choice{min-height:112px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:.35rem;text-align:left;padding:1rem;border:1px solid var(--line);border-radius:10px;background:#0b100d}.join-choice strong{font-size:1.05rem}.join-choice small{color:var(--mu);font-weight:400;line-height:1.35}.join-choice.pri small{color:#344326}.join-code{display:grid;gap:.55rem;margin-top:.7rem;padding:.85rem;background:#0b100d;border:1px solid var(--line);border-radius:9px}.join-back{justify-self:start;background:transparent;border:0;color:var(--mu);padding:.2rem 0}@media(max-width:420px){.join-actions{grid-template-columns:1fr}.join-choice{min-height:84px}}#join{display:grid;gap:.7rem}
 #joining{display:flex;align-items:center;justify-content:center;gap:.7rem;padding:.7rem 1rem;margin:1rem auto;color:var(--mu)}
 .spin{width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--ac);border-radius:50%;animation:giro .8s linear infinite}@keyframes giro{to{transform:rotate(360deg)}}#join h1{font-size:3rem;line-height:1}
 .top{display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem}
@@ -110,10 +111,25 @@ details{margin:.3rem 0}summary{cursor:pointer}
   <h1>Leilão de Futebol</h1>
   <p class="mu">Dê lances nos craques e monte o melhor time sem estourar o orçamento.</p>
   <p class="mu" style="padding:.65rem .8rem;border:1px solid var(--line);border-radius:8px;background:#0b100d;font-size:.88rem">Você pode jogar sem cadastro! <a href="/conta" style="color:var(--ac);font-weight:800">Entre na sua conta</a> para ganhar XP e subir de nível.</p>
-  <input id="name" placeholder="Seu nome" maxlength="16">
-  <input id="room" placeholder="Código da sala" maxlength="8">
-  <button class="pri" onclick="join(false)">Entrar na sala</button>
-  <button onclick="join(true)">Criar nova sala</button>
+  <label for="name" style="font-weight:800;margin-top:.35rem">Seu nome ou apelido</label>
+  <input id="name" placeholder="Como deseja aparecer na partida?" maxlength="16" autocomplete="nickname">
+  <p class="mu" style="margin:.25rem 0 0;font-weight:700">O que você deseja fazer?</p>
+  <div class="join-actions" id="joinActions">
+    <button class="join-choice pri" type="button" onclick="join(true)">
+      <strong>＋ Criar sala</strong>
+      <small>Comece uma nova partida. O código será gerado automaticamente.</small>
+    </button>
+    <button class="join-choice" type="button" onclick="showJoinCode()">
+      <strong>↪ Entrar em sala</strong>
+      <small>Já tem um código? Informe para entrar na partida dos seus amigos.</small>
+    </button>
+  </div>
+  <div class="join-code" id="joinCodeBox" hidden>
+    <label for="room" style="font-weight:800">Código da sala existente</label>
+    <input id="room" placeholder="Digite o código recebido" maxlength="8" autocomplete="off" autocapitalize="characters">
+    <button class="pri" type="button" onclick="join(false)">Entrar na sala</button>
+    <button class="join-back" type="button" onclick="hideJoinCode()">← Voltar</button>
+  </div>
 </div>
 
 <div id="joining" class="panel" hidden role="status"><span class="spin" aria-hidden="true"></span><span id="joinmsg">Entrando na sala…</span></div>
@@ -187,18 +203,32 @@ const score = p => p.squad.reduce((s, x) => s + x.r, 0);
 const cfg = (k, v) => send({ t: 'cfg', k, v });
 const store = { get() { try { return JSON.parse(localStorage.getItem('leilao_s')); } catch { return null; } }, set(v) { try { v ? localStorage.setItem('leilao_s', JSON.stringify(v)) : localStorage.removeItem('leilao_s'); } catch {} } };
 
-$('room').value = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
+const inviteCode = (new URLSearchParams(location.search).get('sala') || '').toUpperCase();
+$('room').value = inviteCode;
+if (inviteCode) $('joinCodeBox').hidden = false;
 let token = '', lastMsg = Date.now(), retry = null, jt = null, authFailed = false; // declaradas ANTES de qualquer connect() (senão a página quebra para quem tem sessão salva)
 const saved = store.get(); if (saved) { name = saved.name; room = saved.room; token = saved.token || ''; $('name').value = name; $('room').value = room; showJoining('Reconectando à sua sala…'); connect(); }
 
 function showJoining(msg) { $('join').hidden = true; $('joining').hidden = false; $('joinmsg').textContent = msg; clearTimeout(jt);
   jt = setTimeout(() => { if (!S) $('joinmsg').textContent = 'Acordando o servidor… no plano grátis pode levar até 1 minuto.'; }, 6000); }
 function showJoinForm() { clearTimeout(jt); $('joining').hidden = true; $('join').hidden = false; $('game').hidden = true; }
+function showJoinCode() {
+  $('joinActions').hidden = true;
+  $('joinCodeBox').hidden = false;
+  $('room').focus();
+}
+function hideJoinCode() {
+  $('joinCodeBox').hidden = true;
+  $('joinActions').hidden = false;
+  $('room').value = '';
+}
 async function join(create) {
-  name = $('name').value.trim(); room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
+  name = $('name').value.trim();
+  if (!name) { $('name').focus(); return alert('Informe seu nome ou apelido para continuar.'); }
+  room = (create ? Array.from(crypto.getRandomValues(new Uint8Array(6)), b => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('') : $('room').value).trim().toUpperCase();
+  if (!room) { $('room').focus(); return alert('Informe o código da sala existente.'); }
   token = (saved && saved.room === room && saved.name === name) ? (saved.token || '') : '';
-  if (!name || !room) return alert('Informe seu nome e o código da sala.');
-  showJoining('Conectando à sala…');
+  showJoining(create ? 'Criando sua sala…' : 'Conectando à sala…');
   // A conta é opcional: se houver uma sessão válida, o servidor registra o jogador
   // para XP; sem sessão, a partida funciona normalmente sem pontuação de experiência.
   connect();
