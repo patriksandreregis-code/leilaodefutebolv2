@@ -116,7 +116,7 @@ async function connect(ws) {
     const {room,player}=membership;
     if(room.closed||!room.players.includes(player))return fail('Sala indisponível.');
     if(m.type==='start'){
-      if(room.players[0]!==player)return fail('Somente o anfitrião pode iniciar.');
+      if(!player.host)return fail('Somente o anfitrião pode iniciar.');
       if(room.phase!=='lobby'||room.players.length<2)return fail('É necessário ter pelo menos 2 jogadores para começar.');
       room.round=1;startRound(room);return;
     }
@@ -149,7 +149,7 @@ async function connect(ws) {
       player.submitted=true;finishRound(room,player.name+' apertou STOP!');return;
     }
     if(m.type==='next'){
-      if(room.players[0]!==player)return fail('Somente o anfitrião pode avançar.');
+      if(!player.host)return fail('Somente o anfitrião pode avançar.');
       if(room.phase!=='results')return fail('A rodada ainda está em andamento.');
       if(room.round>=room.totalRounds){room.phase='finished';broadcast(room);return;}
       room.round++;startRound(room);return;
