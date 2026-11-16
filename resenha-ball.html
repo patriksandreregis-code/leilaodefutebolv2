@@ -81,6 +81,7 @@ async function loadBallAccessToken(){
    const cfg=await response.json();
    if(!cfg.configured)return '';
    ballSupabase=window.supabase.createClient(cfg.url,cfg.publishableKey);
+   ballSupabase.auth.onAuthStateChange((_event,session)=>{ballVoiceAccessToken=session&&session.user&&session.user.email_confirmed_at?session.access_token:'';if(!ballVoiceAccessToken&&voiceRoom)leaveVoice();voiceUi();});
   }
   const {data,error}=await ballSupabase.auth.getSession();
   if(error)throw error;
