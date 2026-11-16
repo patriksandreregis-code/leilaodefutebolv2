@@ -132,7 +132,7 @@ function render(){
   const defs=state.categories||[];
   if(!$('answerFields').dataset.round || $('answerFields').dataset.round!==String(state.round)){
    $('answerFields').dataset.round=String(state.round);
-   $('answerFields').innerHTML=defs.map(([id,label])=>'<div class="answer"><label for="ans-'+id+'">'+escapeHtml(label)+'</label><input id="ans-'+id+'" data-answer="'+id+'" maxlength="60" autocomplete="off" placeholder="Começa com '+state.letter+'"></div>').join('');
+   $('answerFields').innerHTML=defs.map(c=>'<div class="answer"><label for="ans-'+c.id+'">'+escapeHtml(c.label)+'</label><input id="ans-'+c.id+'" data-answer="'+c.id+'" maxlength="60" autocomplete="off" placeholder="Começa com '+state.letter+'"></div>').join('');
    document.querySelectorAll('[data-answer]').forEach(i=>i.addEventListener('input',scheduleDraft));
   }
   const me=state.players.find(p=>p.id===playerId);$('stopBtn').disabled=!!(me&&me.submitted);
@@ -141,7 +141,7 @@ function render(){
   const secs=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('clock').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
  }else if(state.phase==='results'){
   $('resultTitle').textContent=state.winner||'Resultado da rodada';$('resultScores').innerHTML=table(state.scores.map(p=>({name:p.name,score:(state.answers.find(a=>a.id===p.id)||{}).points||0})));
-  $('answerReview').innerHTML=state.answers.map(p=>'<div class="review-card"><strong>'+escapeHtml(p.name)+' · '+p.points+' pontos</strong><div class="review-grid">'+(state.categories||[]).map(([id,label])=>'<div class="review-item">'+escapeHtml(label)+'<b>'+escapeHtml((p.answers||{})[id]||'—')+'</b></div>').join('')+'</div></div>').join('');
+  $('answerReview').innerHTML=state.answers.map(p=>'<div class="review-card"><strong>'+escapeHtml(p.name)+' · '+p.points+' pontos</strong><div class="review-grid">'+(state.categories||[]).map(c=>'<div class="review-item">'+escapeHtml(c.label)+'<b>'+escapeHtml((p.answers||{})[c.id]||'—')+'</b></div>').join('')+'</div></div>').join('');
   $('nextBtn').textContent=state.round>=state.totalRounds?'Ver placar final':'Próxima rodada';$('nextBtn').classList.toggle('hidden',!isHost);
  }else if(state.phase==='finished'){$('finalScores').innerHTML=table(state.scores);}
 }
