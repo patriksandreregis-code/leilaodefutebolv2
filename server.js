@@ -49,11 +49,22 @@ async function verifyAuctionUser(accessToken) {
     return user && user.id && user.email_confirmed_at ? user : null;
   } catch (e) { console.error('Falha ao validar conta do Leilão:', e.message); return null; }
 }
-async function verifyPalpitesAdmin(accessToken) {
-  const user = await verifyAuctionUser(accessToken);
-  const allowedEmail = String(process.env.PALPITES_ADMIN_EMAIL || '').trim().toLowerCase();
-  if (!user || !allowedEmail || String(user.email || '').trim().toLowerCase() !== allowedEmail) return null;
-  return user;
+async function verifyPalpitesUser(accessToken) {
+  // O Crava é exclusivo para contas autenticadas e com e-mail confirmado.
+  // A identidade é validada no Supabase Auth, nunca confiando no user enviado pelo navegador.
+  return verifyAuctionUser(accessToken);
+}
+function scoreCravaPrediction(prediction, match) {
+  if (!match || !['FINISHED', 'AWARDED'].includes(match.status) ||
+      !match.score || match.score.home == null || match.score.away == null) return null;
+  const ph = Number(prediction.predicted_home_score), pa = Number(prediction.predicted_away_score);
+  const ah = Number(match.score.home), aa = Number(match.score.away);
+  if (![ph, pa, ah, aa].every(Number.isInteger)) return null;
+  if (ph === ah && pa === aa) return 10;
+  const outcome = (h, a) => h > a ? 1 : h < a ? -1 : 0;
+  if (outcome(ph, pa) === outcome(ah, aa) && ph - pa === ah - aa) return 7;
+  if (outcome(ph, pa) === outcome(ah, aa)) return 5;
+  return 0;
 }
 
 async function awardAuctionXP(r) {
@@ -236,7 +247,7 @@ const server = http.createServer(async (q, s) => {
   if ((pth === '/api/palpites/me' || pth === '/api/palpites/matches' || pth === '/api/palpites/prediction') && (q.method === 'GET' || q.method === 'POST')) {
     const sendJson = (code, data) => { s.writeHead(code, { ...hdr, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); s.end(JSON.stringify(data)); };
     const token = String(q.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const user = await verifyPalpitesAdmin(token);
+    const user = await verifyPalpitesUser(token);
     if (!user) return sendJson(403, { error: 'Área de testes restrita ao administrador autorizado.' });
     if (pth === '/api/palpites/me') return sendJson(200, { ok: true, email: user.email });
     const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -284,8 +295,50 @@ const server = http.createServer(async (q, s) => {
         const predictionResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,predicted_home_score,predicted_away_score,actual_home_score,actual_away_score,match_status,settled_at&season=eq.' + season + '&user_id=eq.' + encodeURIComponent(user.id) + '&order=matchday.asc', { headers: dbHeaders });
         if (!predictionResponse.ok) throw new Error('Supabase HTTP ' + predictionResponse.status + ': ' + (await predictionResponse.text()).slice(0,250));
         const predictions = await predictionResponse.json();
+
+        // Ranking do Crava: pontuação calculada com os resultados oficiais, sem misturar XP.
+        const allPredictionsResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,user_id,predicted_home_score,predicted_away_score&season=eq.' + season, { headers: dbHeaders });
+        if (!allPredictionsResponse.ok) throw new Error('Supabase ranking HTTP ' + allPredictionsResponse.status + ': ' + (await allPredictionsResponse.text()).slice(0,250));
+        const allPredictions = await allPredictionsResponse.json();
+        const userIds = [...new Set(allPredictions.map(p => p.user_id).filter(Boolean))];
+        let profileRows = [];
+        if (userIds.length) {
+          const profileUrl = base + 'profiles?select=id,username,display_name&id=in.(' + userIds.join(',') + ')';
+          const profileResponse = await fetch(profileUrl, { headers: dbHeaders });
+          if (!profileResponse.ok) throw new Error('Supabase perfis HTTP ' + profileResponse.status + ': ' + (await profileResponse.text()).slice(0,250));
+          profileRows = await profileResponse.json();
+        }
+        const profileById = new Map(profileRows.map(p => [p.id, p]));
+        const matchById = new Map(globalThis.__resenhaPalpitesCache.matches.map(m => [m.id, m]));
+        const rankingByUser = new Map();
+        for (const prediction of allPredictions) {
+          const match = matchById.get(Number(prediction.match_id));
+          const points = scoreCravaPrediction(prediction, match);
+          if (points === null) continue;
+          const profile = profileById.get(prediction.user_id);
+          const name = String(profile && (profile.display_name || profile.username) || 'Torcedor').trim();
+          const row = rankingByUser.get(prediction.user_id) || { userId: prediction.user_id, name, points: 0, exact: 0, seven: 0, matches: 0, rounds: {} };
+          row.points += points;
+          row.matches += 1;
+          if (points === 10) row.exact += 1;
+          if (points === 7) row.seven += 1;
+          const roundKey = String(prediction.matchday || '0');
+          row.rounds[roundKey] = (row.rounds[roundKey] || 0) + points;
+          rankingByUser.set(prediction.user_id, row);
+        }
+        const sortRanking = rows => rows.sort((a,b) => b.points-a.points || b.exact-a.exact || b.seven-a.seven || b.matches-a.matches || a.name.localeCompare(b.name, 'pt-BR'))
+          .map((r,i) => ({ position:i+1, name:r.name, points:r.points, exact:r.exact, seven:r.seven, matches:r.matches }));
+        const overallRanking = sortRanking([...rankingByUser.values()]);
+        const roundKeys = [...new Set(allPredictions.map(p => String(p.matchday || '0')))];
+        const roundRankings = {};
+        for (const roundKey of roundKeys) {
+          const rows = [...rankingByUser.values()].filter(r => Object.prototype.hasOwnProperty.call(r.rounds, roundKey))
+            .map(r => ({ ...r, points:r.rounds[roundKey], matches: allPredictions.filter(p => p.user_id === r.userId && String(p.matchday || '0') === roundKey && scoreCravaPrediction(p, matchById.get(Number(p.match_id))) !== null).length }));
+          roundRankings[roundKey] = sortRanking(rows);
+        }
         return sendJson(200, { season, currentMatchday: globalThis.__resenhaPalpitesCache.currentMatchday,
           matches: globalThis.__resenhaPalpitesCache.matches, predictions,
+          rankings: { overall: overallRanking, byRound: roundRankings },
           standings: globalThis.__resenhaPalpitesCache.standings || [], scorers: globalThis.__resenhaPalpitesCache.scorers || [],
           standingsAvailable: !!globalThis.__resenhaPalpitesCache.standingsAvailable,
           scorersAvailable: !!globalThis.__resenhaPalpitesCache.scorersAvailable });
