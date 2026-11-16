@@ -69,7 +69,9 @@ body[data-chess-style="resenha"][data-stadium="maracana"] .arena:before{backgrou
 .nav-dropdown:hover .nav-dropdown-menu,.nav-dropdown:focus-within .nav-dropdown-menu,.nav-dropdown.open .nav-dropdown-menu{display:grid}
 .nav-dropdown-menu a{padding:10px 11px;border-radius:7px;color:#dce5dd;text-decoration:none}.nav-dropdown-menu a:hover{background:#24351e;color:#a8ff3f}.nav-dropdown-menu small{font-size:9px;color:#a8ff3f;margin-left:5px;font-weight:900}
 @media(max-width:760px){.site-header{width:calc(100% - 22px);height:70px}.site-brand-icon{width:44px;height:48px}.site-brand-name{font-size:15px}.site-nav{gap:10px}.site-nav>a:not(.home-cta){display:none}.nav-dropdown-toggle{font-size:11px}.nav-dropdown-menu{left:auto;right:-68px;min-width:210px}}
-.chess-account-prompt{max-width:1180px;margin:0 auto 22px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid rgba(168,255,63,.3);border-radius:16px;background:linear-gradient(110deg,rgba(168,255,63,.10),rgba(22,34,25,.82));box-shadow:0 12px 30px rgba(0,0,0,.16)}.chess-account-copy strong{display:block;color:var(--lime,#a8ff3f);font-size:15px;font-weight:900}.chess-account-copy p{margin:5px 0 0;color:#d0d9d0;font-size:13px;line-height:1.5}.chess-account-link{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:10px;background:var(--lime,#a8ff3f);color:#142014;font-size:13px;font-weight:900;text-decoration:none}.chess-account-link:hover{filter:brightness(1.08);transform:translateY(-1px)}@media(max-width:650px){.chess-account-prompt{align-items:flex-start;flex-direction:column;padding:15px}.chess-account-link{width:100%;justify-content:center}}</style>
+.chess-account-prompt{max-width:1180px;margin:0 auto 22px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid rgba(168,255,63,.3);border-radius:16px;background:linear-gradient(110deg,rgba(168,255,63,.10),rgba(22,34,25,.82));box-shadow:0 12px 30px rgba(0,0,0,.16)}.chess-account-copy strong{display:block;color:var(--lime,#a8ff3f);font-size:15px;font-weight:900}.chess-account-copy p{margin:5px 0 0;color:#d0d9d0;font-size:13px;line-height:1.5}.chess-account-link{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:10px;background:var(--lime,#a8ff3f);color:#142014;font-size:13px;font-weight:900;text-decoration:none}.chess-account-link:hover{filter:brightness(1.08);transform:translateY(-1px)}@media(max-width:650px){.chess-account-prompt{align-items:flex-start;flex-direction:column;padding:15px}.chess-account-link{width:100%;justify-content:center}}
+.room-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.room-choice{min-height:82px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;text-align:left;padding:11px;border:1px solid var(--line,#344238);border-radius:9px;background:#0c130e;color:var(--text,#f4f6f4);font:inherit;font-weight:900;cursor:pointer}.room-choice small{font-size:10px;line-height:1.45;color:var(--muted,#9ca99f);font-weight:600}.room-join-box{display:grid;gap:8px;margin:10px 0}.room-back{border:0;background:transparent;color:var(--muted,#9ca99f);text-align:left;padding:5px 0;cursor:pointer;font:inherit;font-size:11px}@media(max-width:480px){.room-choices{grid-template-columns:1fr}.room-choice{min-height:68px}}
+</style>
 </head>
 <body><div class="wrap">
 <header class="site-header">
@@ -101,9 +103,10 @@ body[data-chess-style="resenha"][data-stadium="maracana"] .arena:before{backgrou
 <div class="online" id="onlineControls">
 <strong>⚔️ Salas multiplayer</strong>
 <label class="field"><span>Seu nome</span><input id="playerName" maxlength="16" value="Jogador" autocomplete="nickname" placeholder="Como deseja aparecer?"></label>
-<div class="actions"><button class="btn" id="createRoom">Criar sala</button></div>
-<label class="field"><span>Código da sala</span><input id="roomCodeInput" maxlength="6" autocomplete="off" placeholder="Ex.: A1B2C3" style="text-transform:uppercase;letter-spacing:2px;font-weight:900"></label>
-<div class="actions"><button class="btn secondary" id="joinRoom">Entrar na sala</button><button class="btn secondary" id="copyRoom" disabled>Copiar código</button></div>
+<p class="note">Escolha como deseja jogar online:</p>
+<div class="room-choices" id="roomChoices"><button class="room-choice" type="button" id="chooseCreateRoom"><strong>＋ Criar sala</strong><small>Comece uma nova partida. O código será gerado automaticamente.</small></button><button class="room-choice" type="button" id="chooseJoinRoom"><strong>↪ Entrar em sala</strong><small>Já recebeu um código? Informe para entrar na partida.</small></button></div>
+<div class="room-join-box" id="joinRoomBox" hidden><label class="field"><span>Código da sala existente</span><input id="roomCodeInput" maxlength="6" autocomplete="off" placeholder="Digite o código recebido" style="text-transform:uppercase;letter-spacing:2px;font-weight:900"></label><div class="actions"><button class="btn secondary" id="joinRoom">Entrar na sala</button><button class="btn secondary" type="button" id="backRoomChoices">← Voltar</button></div></div>
+<div class="actions"><button class="btn secondary" id="copyRoom" disabled>Copiar código</button></div>
 <div id="onlineStatus" class="note" aria-live="polite">Crie uma sala e envie o código ao seu adversário, ou entre usando um código recebido.</div>
 <div class="actions"><button class="btn secondary" id="offerDraw" disabled>Oferecer empate</button><button class="btn secondary" id="resign" disabled>Desistir</button></div><div class="actions"><button class="btn secondary" id="rematch" disabled>Revanche</button><button class="btn secondary" id="leaveRoom" disabled>Sair da sala</button></div>
 <p class="note">As jogadas são conferidas pelo servidor. A sala aceita dois jogadores; se alguém cair, terá até 60 segundos para reconectar.</p>
@@ -400,10 +403,12 @@ function restoreChessRoom(){
  if(code&&token){roomCode=code;reconnectToken=token;setOnlineStatus('Tentando recuperar a sala '+code+'…');connectChess({type:'reconnect',code,reconnectToken:token});}
  else setOnlineStatus('Crie uma sala e compartilhe o código, ou entre usando um código recebido.');
 }
-$('createRoom').addEventListener('click',()=>{
+$('chooseCreateRoom').addEventListener('click',()=>{
  if(mode!=='online')return;const name=$('playerName').value.trim()||'Jogador';roomCode='';playerColor=null;onlinePhase='idle';setOnlineStatus('Criando sala…');
  connectChess({type:'create',name,club:$('club').value,accessToken:getAccessToken()});
 });
+$('chooseJoinRoom').addEventListener('click',()=>{$('roomChoices').hidden=true;$('joinRoomBox').hidden=false;$('roomCodeInput').focus();});
+$('backRoomChoices').addEventListener('click',()=>{$('joinRoomBox').hidden=true;$('roomChoices').hidden=false;$('roomCodeInput').value='';});
 $('joinRoom').addEventListener('click',()=>{
  if(mode!=='online')return;const code=$('roomCodeInput').value.trim().toUpperCase();
  if(!/^[A-Z0-9]{6}$/.test(code)){setOnlineStatus('Informe um código de sala com 6 caracteres.');return;}
