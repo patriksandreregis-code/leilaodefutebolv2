@@ -164,7 +164,7 @@ async function connect(ws) {
   ws.on('close',()=>{
     const membership=memberships.get(ws);if(!membership)return;
     const {room,player}=membership;memberships.delete(ws);player.ws=null;
-    if(!room.closed){if(room.players[0]===player){const next=room.players.find(p=>p.ws);if(next){player.host=false;next.host=true;}}broadcast(room);if(room.players.every(p=>!p.ws))setTimeout(()=>{if(room.players.every(p=>!p.ws))closeRoom(room,'Sala encerrada por inatividade.');},60000);}
+    if(!room.closed){if(player.host){const next=room.players.find(p=>p.ws);if(next){player.host=false;next.host=true;}}broadcast(room);if(room.players.every(p=>!p.ws))setTimeout(()=>{if(room.players.every(p=>!p.ws))closeRoom(room,'Sala encerrada por inatividade.');},60000);}
   });
 }
 module.exports={connect};
