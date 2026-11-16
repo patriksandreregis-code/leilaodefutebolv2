@@ -297,9 +297,14 @@ const server = http.createServer(async (q, s) => {
         const predictions = await predictionResponse.json();
 
         // Ranking do Crava: pontuação calculada com os resultados oficiais, sem misturar XP.
-        const allPredictionsResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,user_id,predicted_home_score,predicted_away_score&season=eq.' + season, { headers: dbHeaders });
-        if (!allPredictionsResponse.ok) throw new Error('Supabase ranking HTTP ' + allPredictionsResponse.status + ': ' + (await allPredictionsResponse.text()).slice(0,250));
-        const allPredictions = await allPredictionsResponse.json();
+        const allPredictions = [];
+        for (let offset = 0; ; offset += 1000) {
+          const allPredictionsResponse = await fetch(base + 'resenha_palpites_predictions?select=match_id,matchday,user_id,predicted_home_score,predicted_away_score&season=eq.' + season + '&order=matchday.asc&limit=1000&offset=' + offset, { headers: dbHeaders });
+          if (!allPredictionsResponse.ok) throw new Error('Supabase ranking HTTP ' + allPredictionsResponse.status + ': ' + (await allPredictionsResponse.text()).slice(0,250));
+          const batch = await allPredictionsResponse.json();
+          allPredictions.push(...batch);
+          if (batch.length < 1000) break;
+        }
         const userIds = [...new Set(allPredictions.map(p => p.user_id).filter(Boolean))];
         let profileRows = [];
         if (userIds.length) {
