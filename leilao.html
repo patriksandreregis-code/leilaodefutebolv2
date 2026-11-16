@@ -129,10 +129,10 @@ details{margin:.3rem 0}summary{cursor:pointer}
   </div>
   <section class="voice-panel" id="auctionVoice">
     <span class="voice-title">RESENHA VOICE · LEILÃO</span>
-    <button class="primary" id="auctionVoiceJoin" type="button">CONECTAR VOZ</button>
+    <button class="primary" id="auctionVoiceJoin" type="button">ENTRAR / CRIAR CONTA</button>
     <button id="auctionVoiceMic" type="button" disabled>MICROFONE: —</button>
     <button id="auctionVoiceOutput" type="button" disabled>ÁUDIO: LIGADO</button>
-    <span class="voice-status" id="auctionVoiceStatus">Conecte-se para conversar com todos os jogadores desta sala.</span>
+    <span class="voice-status" id="auctionVoiceStatus">Para liberar o Resenha Voice, entre ou crie sua conta e confirme seu e-mail.</span>
     <span class="voice-speakers" id="auctionVoiceSpeakers">Ninguém falando</span>
   </section>
   <div class="grid">
@@ -171,7 +171,7 @@ async function loadAuctionAuth() {
   const { data, error } = await auctionSupabase.auth.getSession();
   if (error) throw error;
   auctionSession = data.session;
-  auctionSupabase.auth.onAuthStateChange((_event, session) => { auctionSession = session; });
+  auctionSupabase.auth.onAuthStateChange((_event, session) => { auctionSession = session; updateAuctionVoiceAccess(session); });
   return auctionSession;
 }
 const $ = id => document.getElementById(id);
@@ -375,9 +375,18 @@ setInterval(() => {
 <script>
 let auctionVoiceRoom=null,auctionVoiceMicOn=false,auctionVoiceOutputMuted=false;
 const voiceEl=id=>document.getElementById(id);
+function updateAuctionVoiceAccess(session=auctionSession){
+ const authenticated=!!(session&&session.access_token&&session.user&&session.user.email_confirmed_at);
+ if(!auctionVoiceRoom){
+  voiceEl('auctionVoiceJoin').textContent=authenticated?'CONECTAR VOZ':'ENTRAR / CRIAR CONTA';
+  if(!authenticated)voiceEl('auctionVoiceStatus').textContent='Para liberar o Resenha Voice, entre ou crie sua conta e confirme seu e-mail.';
+  else if(voiceEl('auctionVoiceStatus').textContent.includes('confirme seu e-mail'))voiceEl('auctionVoiceStatus').textContent='Conecte-se para conversar com todos os jogadores desta sala.';
+ }
+}
 function auctionVoiceUi(){
  const joined=!!auctionVoiceRoom;
- voiceEl('auctionVoiceJoin').textContent=joined?'DESCONECTAR VOZ':'CONECTAR VOZ';
+ updateAuctionVoiceAccess();
+ if(joined)voiceEl('auctionVoiceJoin').textContent='DESCONECTAR VOZ';
  voiceEl('auctionVoiceMic').disabled=!joined;
  voiceEl('auctionVoiceOutput').disabled=!joined;
  voiceEl('auctionVoiceMic').textContent='MICROFONE: '+(auctionVoiceMicOn?'LIGADO':'DESLIGADO');
@@ -395,11 +404,15 @@ async function leaveAuctionVoice(){
 }
 async function joinAuctionVoice(){
  if(auctionVoiceRoom){await leaveAuctionVoice();return;}
+ let session=null;
+ try{session=await loadAuctionAuth();}catch(e){}
+ updateAuctionVoiceAccess(session);
+ if(!session||!session.access_token||!session.user||!session.user.email_confirmed_at){voiceEl('auctionVoiceStatus').textContent='Para liberar o Resenha Voice, entre ou crie sua conta e confirme seu e-mail.';location.href='/conta';return;}
  if(!S||!S.you||!S.code){voiceEl('auctionVoiceStatus').textContent='Entre primeiro em uma sala do Leilão.';return;}
  if(!window.LivekitClient){voiceEl('auctionVoiceStatus').textContent='Não foi possível carregar o sistema de voz. Atualize a página.';return;}
  const btn=voiceEl('auctionVoiceJoin');btn.disabled=true;voiceEl('auctionVoiceStatus').textContent='Conectando à sala de voz...';
  try{
-  const response=await fetch('/api/leilao-voice/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,playerId:S.you})});
+  const response=await fetch('/api/leilao-voice/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:S.code,playerId:S.you,accessToken:session.access_token})});
   const data=await response.json();if(!response.ok)throw new Error(data.error||'Falha ao preparar a voz.');
   const room=new LivekitClient.Room({adaptiveStream:true,dynacast:true});auctionVoiceRoom=room;
   room.on(LivekitClient.RoomEvent.TrackSubscribed,(track)=>{
@@ -417,6 +430,7 @@ voiceEl('auctionVoiceJoin').addEventListener('click',joinAuctionVoice);
 voiceEl('auctionVoiceMic').addEventListener('click',async()=>{if(!auctionVoiceRoom)return;try{auctionVoiceMicOn=!auctionVoiceMicOn;await auctionVoiceRoom.localParticipant.setMicrophoneEnabled(auctionVoiceMicOn);auctionVoiceUi();}catch(e){auctionVoiceMicOn=false;auctionVoiceUi();voiceEl('auctionVoiceStatus').textContent='Não foi possível acessar o microfone.';}});
 voiceEl('auctionVoiceOutput').addEventListener('click',()=>{auctionVoiceOutputMuted=!auctionVoiceOutputMuted;document.querySelectorAll('audio[data-leilao-voice="1"]').forEach(a=>a.muted=auctionVoiceOutputMuted);auctionVoiceUi();});
 window.addEventListener('pagehide',()=>{if(auctionVoiceRoom)auctionVoiceRoom.disconnect();});
+loadAuctionAuth().then(updateAuctionVoiceAccess).catch(()=>updateAuctionVoiceAccess(null));
 </script><script src="/nav.js" defer></script>
 </body>
 </html>
