@@ -31,7 +31,7 @@ function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.
 function publicState(room) {
   return {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
-    letter:room.letter, deadline:room.deadline, categories:CATEGORIES[room.mode],
+    letter:room.letter, deadline:room.deadline, categories:room.categories,
     players:room.players.map(playerView),
     answers:room.phase==='results' ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
@@ -94,7 +94,7 @@ async function connect(ws) {
         if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
+        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -116,6 +116,32 @@ async function connect(ws) {
     if(!membership)return fail('Crie ou entre em uma sala primeiro.');
     const {room,player}=membership;
     if(room.closed||!room.players.includes(player))return fail('Sala indisponível.');
+    if(m.type==='category_add'){
+      if(!player.host)return fail('Somente o anfitrião pode alterar as categorias.');
+      if(room.phase!=='lobby')return fail('As categorias só podem ser alteradas antes da partida.');
+      const label=cleanName(m.label).slice(0,24);
+      if(label.length<2)return fail('Digite uma categoria com pelo menos 2 caracteres.');
+      if(room.categories.length>=16)return fail('A sala permite no máximo 16 categorias.');
+      if(room.categories.some(c=>norm(c.label)===norm(label)))return fail('Essa categoria já existe.');
+      room.categories.push({id:'custom_'+crypto.randomBytes(4).toString('hex'),label});broadcast(room);return;
+    }
+    if(m.type==='category_remove'){
+      if(!player.host)return fail('Somente o anfitrião pode alterar as categorias.');
+      if(room.phase!=='lobby')return fail('As categorias só podem ser alteradas antes da partida.');
+      if(room.categories.length<=1)return fail('A partida precisa ter pelo menos uma categoria.');
+      const index=room.categories.findIndex(c=>c.id===String(m.categoryId||''));
+      if(index<0)return fail('Categoria não encontrada.');
+      room.categories.splice(index,1);broadcast(room);return;
+    }
+    if(m.type==='kick'){
+      if(!player.host)return fail('Somente o anfitrião pode expulsar jogadores.');
+      const target=room.players.find(p=>p.id===String(m.playerId||''));
+      if(!target||target===player)return fail('Jogador não encontrado.');
+      room.players=room.players.filter(p=>p!==target);
+      target.reconnectToken=makeToken();
+      if(target.ws){memberships.delete(target.ws);send(target.ws,{type:'removed',message:'O anfitrião removeu você da sala.'});try{target.ws.close(4003,'Removido da sala');}catch(_){}}
+      broadcast(room);return;
+    }
     if(m.type==='start'){
       if(!player.host)return fail('Somente o anfitrião pode iniciar.');
       if(room.phase!=='lobby'||room.players.length<2)return fail('É necessário ter pelo menos 2 jogadores para começar.');
@@ -124,7 +150,7 @@ async function connect(ws) {
     if(m.type==='draft'){
       if(room.phase!=='playing'||player.submitted)return;
       const incoming=m.answers&&typeof m.answers==='object'?m.answers:{};
-      const allowed=new Set(CATEGORIES[room.mode].map(x=>x[0]));
+      const allowed=new Set(room.categories.map(x=>x.id));
       const answers={};
       for(const [id,value] of Object.entries(incoming))if(allowed.has(id))answers[id]=String(value||'').trim().slice(0,60);
       player.answers=answers;return;
@@ -132,7 +158,7 @@ async function connect(ws) {
     if(m.type==='submit'){
       if(room.phase!=='playing'||player.submitted)return fail('Esta rodada já foi encerrada para você.');
       const incoming=m.answers&&typeof m.answers==='object'?m.answers:{};
-      const allowed=new Set(CATEGORIES[room.mode].map(x=>x[0]));
+      const allowed=new Set(room.categories.map(x=>x.id));
       const answers={};
       for(const [id,value] of Object.entries(incoming))if(allowed.has(id))answers[id]=String(value||'').trim().slice(0,60);
       player.answers=answers;player.submitted=true;
@@ -144,7 +170,7 @@ async function connect(ws) {
       if(room.phase!=='playing')return fail('A rodada já terminou.');
       if(player.submitted)return fail('Você já enviou suas respostas.');
       const incoming=m.answers&&typeof m.answers==='object'?m.answers:{};
-      const allowed=new Set(CATEGORIES[room.mode].map(x=>x[0]));
+      const allowed=new Set(room.categories.map(x=>x.id));
       player.answers={};
       for(const [id,value] of Object.entries(incoming))if(allowed.has(id))player.answers[id]=String(value||'').trim().slice(0,60);
       player.submitted=true;finishRound(room,player.name+' apertou STOP!');return;
@@ -155,7 +181,10 @@ async function connect(ws) {
       if(room.round>=room.totalRounds){room.phase='finished';broadcast(room);return;}
       room.round++;startRound(room);return;
     }
-    if(m.type==='leave'){closeRoom(room,player.name+' encerrou a sala.');return;}
+    if(m.type==='leave'){
+      if(player.host){closeRoom(room,player.name+' encerrou a sala.');return;}
+      room.players=room.players.filter(p=>p!==player);memberships.delete(ws);player.reconnectToken=makeToken();send(ws,{type:'closed',message:'Você saiu da sala.'});try{ws.close(1000,'Saiu da sala');}catch(_){}broadcast(room);return;
+    }
   };
   ws.on('message',raw=>{
     const now=Date.now();if(now-messageWindow>10000){messageWindow=now;messageCount=0;}
