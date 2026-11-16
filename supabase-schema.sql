@@ -158,6 +158,10 @@ $$;
 
 revoke all on function public.cleanup_unconfirmed_resenha_users() from public, anon, authenticated;
 
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'resenha-cleanup-unconfirmed-users';
+
 select cron.schedule(
   'resenha-cleanup-unconfirmed-users',
   '17 3 * * *',
