@@ -115,6 +115,8 @@ $('startBtn').addEventListener('click',()=>send({type:'start'}));
 $('stopBtn').addEventListener('click',()=>{clearTimeout(draftTimer);const a=answers();send({type:'stop',answers:a});$('stopBtn').disabled=true;});
 $('nextBtn').addEventListener('click',()=>send({type:'next'}));
 ['leaveBtn','leaveResultsBtn','leaveFinalBtn'].forEach(id=>$(id).addEventListener('click',()=>send({type:'leave'})));
+setInterval(()=>{if(state&&state.phase==='playing'){const secs=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));$('clock').textContent=String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');}},250);
+try{const saved=JSON.parse(localStorage.getItem('resenhaStopRoom')||'null');if(saved&&saved.code&&saved.reconnectToken&&token){status('Recuperando sua sala…');connect({type:'reconnect',code:saved.code,reconnectToken:saved.reconnectToken});}}catch(_){}
 })();
 </script>
 </body></html>
