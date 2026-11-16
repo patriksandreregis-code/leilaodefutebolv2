@@ -280,7 +280,7 @@ const server = http.createServer(async (q, s) => {
     const apiToken = process.env.FOOTBALL_DATA_API_TOKEN;
     if (!secret || !process.env.SUPABASE_URL || !apiToken) return sendCravaJson(503, { error: 'Ranking Crava temporariamente indisponível.' });
     try {
-      const season = 2026, base = process.env.SUPABASE_URL.replace(/\\/$/, '') + '/rest/v1/';
+      const season = 2026, base = process.env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/';
       const dbHeaders = { apikey: secret, Authorization: 'Bearer ' + secret };
       if (!globalThis.__resenhaPalpitesCache || Date.now() - globalThis.__resenhaPalpitesCache.at > 5 * 60 * 1000) {
         const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) });
