@@ -500,11 +500,14 @@ const server = http.createServer(async (q, s) => {
     q.on('end', async () => {
       if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
       let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const authUser = await verifyAuctionUser(String(body.accessToken || ''));
+      if (!authUser) return sendJson(401, { error: 'Para liberar o Resenha Voice, entre em uma conta com e-mail confirmado.' });
       const code = String(body.code || '').toUpperCase().trim().slice(0, 8);
       const playerId = String(body.playerId || '').slice(0, 32);
       const auctionRoom = rooms[code];
       const player = auctionRoom && auctionRoom.players.find(p => p.id === playerId);
       if (!auctionRoom || !player || !player.ws || player.ws.readyState !== 1) return sendJson(403, { error: 'Entre primeiro em uma sala online do Leilão de Futebol.' });
+      if (!player.supabaseUserId || player.supabaseUserId !== authUser.id) return sendJson(403, { error: 'Entre novamente na sala do Leilão depois de acessar sua conta para liberar o Voice.' });
       if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
         return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
       }
@@ -528,8 +531,10 @@ const server = http.createServer(async (q, s) => {
     q.on('end', async () => {
       if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
       let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
-      const participant = chessServer.getVoiceParticipant(body.code, body.playerId, body.reconnectToken);
-      if (!participant) return sendJson(403, { error: 'Entre em uma partida online com os dois jogadores conectados antes de ativar o Voice.' });
+      const authUser = await verifyAuctionUser(String(body.accessToken || ''));
+      if (!authUser) return sendJson(401, { error: 'Para liberar o Resenha Voice, entre em uma conta com e-mail confirmado.' });
+      const participant = chessServer.getVoiceParticipant(body.code, body.playerId, body.reconnectToken, authUser.id);
+      if (!participant) return sendJson(403, { error: 'Entre na partida do Resenha Chess usando sua conta e mantenha os dois jogadores conectados para liberar o Voice.' });
       if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
       try {
         const voiceRoom = 'chess-' + participant.code.toLowerCase();
@@ -551,12 +556,15 @@ const server = http.createServer(async (q, s) => {
     q.on('end', async () => {
       if (tooLarge) return sendJson(413, { error: 'Solicitação muito grande.' });
       let body; try { body = JSON.parse(raw || '{}'); } catch { return sendJson(400, { error: 'Dados inválidos.' }); }
+      const authUser = await verifyAuctionUser(String(body.accessToken || ''));
+      if (!authUser) return sendJson(401, { error: 'Para liberar o Resenha Voice, entre em uma conta com e-mail confirmado.' });
       const code = String(body.code || '').toUpperCase().trim().slice(0, 8);
       const playerId = String(body.playerId || '').slice(0, 32);
       const mode = body.mode === 'team' ? 'team' : 'all';
       const room = beatball.rooms.get(code);
       const player = room && room.players.get(playerId);
       if (!room || !player || !player.ws || player.ws.readyState !== 1) return sendJson(403, { error: 'Entre primeiro em uma sala online do Resenha Ball.' });
+      if (!player.userId || player.userId !== authUser.id) return sendJson(403, { error: 'Entre novamente na sala do Resenha Ball depois de acessar sua conta para liberar o Voice.' });
       if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) {
         return sendJson(503, { error: 'O serviço de voz ainda não foi configurado no servidor.' });
       }
