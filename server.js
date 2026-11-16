@@ -584,7 +584,7 @@ const server = http.createServer(async (q, s) => {
     });
     return;
   }
-  if (pth === '/palpites-teste') { hdr['X-Robots-Tag'] = 'noindex, nofollow, noarchive'; }
+  if (pth === '/palpites-teste' || pth === '/crava') { hdr['X-Robots-Tag'] = 'noindex, nofollow, noarchive'; }
   if (pth === '/robots.txt') { s.writeHead(200, { ...hdr, 'Content-Type': 'text/plain; charset=utf-8' }); return s.end(`User-agent: *\nAllow: /\nDisallow: /manager-teste\nDisallow: /*?sala=\n\nSitemap: ${site}/sitemap.xml\n`); }
   if (pth === '/sitemap.xml') {
     s.writeHead(200, { ...hdr, 'Content-Type': 'application/xml; charset=utf-8' });
