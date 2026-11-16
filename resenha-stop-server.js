@@ -72,7 +72,18 @@ function finishRound(room,reason) {
 }
 function startRound(room) {
   clearRoundTimer(room);
-  room.phase='playing'; const pool=room.allowedLetters&&room.allowedLetters.length?room.allowedLetters:LETTERS; room.letter=pool[Math.floor(Math.random()*pool.length)];
+  room.phase='playing';
+  const pool=room.allowedLetters&&room.allowedLetters.length?room.allowedLetters:LETTERS;
+  if(!Array.isArray(room.letterBag)||room.letterBag.length===0){
+    room.letterBag=[...pool];
+    for(let i=room.letterBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[room.letterBag[i],room.letterBag[j]]=[room.letterBag[j],room.letterBag[i]];}
+    if(room.letterBag.length>1&&room.letterBag[room.letterBag.length-1]===room.previousLetter){
+      const swapIndex=room.letterBag.findIndex(letter=>letter!==room.previousLetter);
+      if(swapIndex>=0)[room.letterBag[room.letterBag.length-1],room.letterBag[swapIndex]]=[room.letterBag[swapIndex],room.letterBag[room.letterBag.length-1]];
+    }
+  }
+  room.letter=room.letterBag.pop();
+  room.previousLetter=room.letter;
   room.deadline=Date.now()+60000; room.winner=null;
   room.players.forEach(p=>{p.answers={};p.roundPoints=0;p.submitted=false;});
   room.timer=setTimeout(()=>finishRound(room,'Tempo esgotado'),60000);
@@ -94,7 +105,7 @@ async function connect(ws) {
         if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
+        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],letterBag:[],previousLetter:'',round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -122,7 +133,7 @@ async function connect(ws) {
       const requested=Array.isArray(m.letters)?m.letters:[];
       const selected=[...new Set(requested.map(x=>String(x).toUpperCase()).filter(x=>LETTERS.includes(x)))];
       if(!selected.length)return fail('Mantenha pelo menos uma letra selecionada.');
-      room.allowedLetters=selected;broadcast(room);return;
+      room.allowedLetters=selected;room.letterBag=[];room.previousLetter='';broadcast(room);return;
     }
     if(m.type==='category_add'){
       if(!player.host)return fail('Somente o anfitrião pode alterar as categorias.');
