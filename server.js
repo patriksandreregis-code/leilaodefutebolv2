@@ -54,6 +54,36 @@ async function verifyPalpitesUser(accessToken) {
   // A identidade é validada no Supabase Auth, nunca confiando no user enviado pelo navegador.
   return verifyAuctionUser(accessToken);
 }
+function resolveCravaCurrentMatchday(matches, now = Date.now()) {
+  // A rodada ativa é identificada pela janela real de partidas, não pelo currentMatchday
+  // do provedor (que pode avançar enquanto ainda há jogos da rodada anterior).
+  const groups = new Map();
+  for (const match of matches || []) {
+    const round = Number(match.matchday), kickoff = Date.parse(match.utcDate);
+    if (!Number.isInteger(round) || !Number.isFinite(kickoff)) continue;
+    const group = groups.get(round) || { round, past: [], future: [] };
+    if (kickoff <= now && ['FINISHED','AWARDED','IN_PLAY','PAUSED'].includes(match.status)) group.past.push(kickoff);
+    if (kickoff > now && ['SCHEDULED','TIMED'].includes(match.status)) group.future.push(kickoff);
+    groups.set(round, group);
+  }
+  const window = 7 * 24 * 60 * 60 * 1000;
+  const active = [...groups.values()].filter(g =>
+    g.past.some(t => now - t <= window) && g.future.some(t => t - now <= window)
+  ).sort((a,b) => b.round - a.round);
+  if (active.length) return active[0].round;
+
+  // Fora da janela entre jogos já iniciados e futuros, prioriza a rodada com
+  // maior concentração de partidas agendadas nos próximos sete dias.
+  const upcoming = [...groups.values()].map(g => ({
+    round: g.round,
+    count: g.future.filter(t => t - now <= window).length,
+    first: g.future.length ? Math.min(...g.future) : Infinity
+  })).filter(g => g.count > 0).sort((a,b) => b.count - a.count || a.first - b.first);
+  if (upcoming.length) return upcoming[0].round;
+  const remaining = [...groups.keys()].sort((a,b) => b-a);
+  return remaining[0] || 1;
+}
+
 function scoreCravaPrediction(prediction, match) {
   if (!match || !['FINISHED', 'AWARDED'].includes(match.status) ||
       !match.score || match.score.home == null || match.score.away == null) return null;
@@ -272,12 +302,7 @@ const server = http.createServer(async (q, s) => {
           const standingsData = extra[0].status === 'fulfilled' ? extra[0].value : null;
           const scorersData = extra[1].status === 'fulfilled' ? extra[1].value : null;
           const table = standingsData && standingsData.standings && (standingsData.standings.find(x => x.type === 'TOTAL') || standingsData.standings[0]);
-          const futureMatches = (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday);
-          const roundCounts = new Map();
-          futureMatches.forEach(m => roundCounts.set(m.matchday, (roundCounts.get(m.matchday) || 0) + 1));
-          const busiestRound = [...roundCounts.entries()].sort((a,b) => b[1]-a[1] ||
-            new Date(futureMatches.find(m => m.matchday === a[0])?.utcDate || 0) - new Date(futureMatches.find(m => m.matchday === b[0])?.utcDate || 0))[0]?.[0];
-          const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) || busiestRound || 1;
+          const currentMatchday = resolveCravaCurrentMatchday(data.matches || []);
           globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday,
             matches: (data.matches || []).map(m => ({
               id: m.id, season: m.season && m.season.startDate ? Number(m.season.startDate.slice(0,4)) : season,
@@ -365,11 +390,7 @@ const server = http.createServer(async (q, s) => {
             const response = await fetch('https://api.football-data.org/v4/competitions/BSA/matches?season=' + season, { headers: { 'X-Auth-Token': apiToken }, signal: AbortSignal.timeout(12000) });
             if (!response.ok) throw new Error('football-data.org HTTP ' + response.status);
             const data = await response.json();
-            const futureMatches = (data.matches || []).filter(m => ['SCHEDULED','TIMED','IN_PLAY','PAUSED'].includes(m.status) && m.matchday);
-            const roundCounts = new Map();
-            futureMatches.forEach(m => roundCounts.set(m.matchday, (roundCounts.get(m.matchday) || 0) + 1));
-            const busiestRound = [...roundCounts.entries()].sort((a,b) => b[1]-a[1] || new Date(futureMatches.find(m => m.matchday === a[0])?.utcDate || 0) - new Date(futureMatches.find(m => m.matchday === b[0])?.utcDate || 0))[0]?.[0];
-            const currentMatchday = Number(data.competition && data.competition.currentSeason && data.competition.currentSeason.currentMatchday) || busiestRound || 1;
+            const currentMatchday = resolveCravaCurrentMatchday(data.matches || []);
             globalThis.__resenhaPalpitesCache = { at: Date.now(), currentMatchday, matches: (data.matches || []).map(m => ({ id:m.id, matchday:m.matchday, utcDate:m.utcDate, status:m.status, homeTeam:m.homeTeam, awayTeam:m.awayTeam, score:m.score && m.score.fullTime })) };
           }
           const match = globalThis.__resenhaPalpitesCache.matches.find(m => m.id === matchId);
