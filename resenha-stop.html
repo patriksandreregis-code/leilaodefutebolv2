@@ -56,9 +56,9 @@ header{height:72px;display:flex;align-items:center;justify-content:space-between
 <div class="players" id="players"></div>
 <div class="host-panel hidden" id="hostPanel"><h3>CONTROLE DO ANFITRIÃO</h3><div class="muted" style="margin-bottom:8px">Remova participantes ou personalize as categorias antes de iniciar.</div><div id="categoryControls" class="category-chips"></div><div class="host-add"><input id="customCategory" maxlength="24" placeholder="Adicionar categoria"><button class="btn" id="addCategoryBtn" type="button">Adicionar</button></div><div class="letter-settings"><strong>LETRAS DA PARTIDA</strong><div class="muted">Desmarque as letras que não deseja sortear. Pelo menos uma precisa ficar selecionada.</div><div class="alphabet-grid" id="alphabetGrid"></div><div class="letter-help" id="letterCount"></div></div></div>
 <div id="lobbyControls"><p class="muted" id="lobbyMessage">Aguardando mais jogadores...</p><div class="room-actions"><button class="btn" id="startBtn">Iniciar partida</button><button class="btn secondary" id="leaveBtn">Sair da sala</button></div></div>
-<div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"><div><div class="countdown-kicker">PREPARE-SE PARA A RODADA</div><div class="countdown-number" id="countdownNumber">3</div><div class="muted">A letra está chegando...</div></div></div>
+<div id="countdownOverlay" class="countdown-overlay hidden" aria-live="assertive"><div><div class="countdown-kicker">PREPARE-SE PARA A RODADA</div><div class="countdown-number" id="countdownNumber">3</div><div class="muted">A letra está chegando...</div><button class="btn secondary" id="leaveCountdownBtn" type="button">Sair da sala</button></div></div>
 <div id="playingArea" class="hidden">
-<div class="gamehead"><div><span class="pill" id="roundLabel">RODADA 1/5</span><h2 style="margin-top:7px">Valendo!</h2></div><div class="clock" id="clock">01:00</div></div>
+<div class="gamehead"><div><span class="pill" id="roundLabel">RODADA 1/5</span><h2 style="margin-top:7px">Valendo!</h2></div><div style="display:flex;align-items:center;gap:12px"><div class="clock" id="clock">01:00</div><button class="btn secondary" id="leavePlayingBtn" type="button">Sair</button></div></div>
 <div class="timer-wrap" aria-label="Tempo restante"><div class="timer-fill" id="timerFill"></div></div>
 <div class="letterbox" id="letterBox"><small>A LETRA DA RODADA</small><div class="letter" id="letter">A</div></div>
 <div class="answers" id="answerFields"></div>
@@ -99,12 +99,21 @@ async function getStopAccessToken(){
 }
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));}));
 function status(t){$('status').textContent=t||'';}
+function returnToMenu(message){
+ state=null;playerId='';reconnectToken='';lastAnimationKey='';
+ try{localStorage.removeItem('resenhaStopRoom');}catch(_){}
+ document.querySelector('.layout').classList.remove('room-active');
+ $('roomState').classList.add('hidden');$('emptyState').classList.remove('hidden');
+ $('countdownOverlay').classList.add('hidden');$('playingArea').classList.add('hidden');
+ $('reviewArea').classList.add('hidden');$('resultsArea').classList.add('hidden');$('finishedArea').classList.add('hidden');
+ status(message||'Você voltou ao menu. Escolha criar uma sala ou entrar em outra.');
+}
 function connect(payload){
  if(socket){try{socket.close();}catch(_){}}
  const protocol=location.protocol==='https:'?'wss:':'ws:';
  socket=new WebSocket(protocol+'//'+location.host+'/resenha-stop-ws');
  socket.addEventListener('open',()=>socket.send(JSON.stringify(payload)));
- socket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m.type==='error'){status(m.message);return;}if(m.type==='removed'){state=null;playerId='';reconnectToken='';try{localStorage.removeItem('resenhaStopRoom');}catch(_){}$('roomState').classList.add('hidden');$('emptyState').classList.remove('hidden');status(m.message||'Você foi removido da sala.');return;}if(m.type==='joined'){playerId=m.playerId||playerId;reconnectToken=m.reconnectToken||reconnectToken;try{localStorage.setItem('resenhaStopRoom',JSON.stringify({code:m.code,playerId,reconnectToken}));}catch(_){}return;}if(m.type==='state'){state=m;render();}if(m.type==='closed'){state=null;playerId='';reconnectToken='';try{localStorage.removeItem('resenhaStopRoom');}catch(_){}$('roomState').classList.add('hidden');$('emptyState').classList.remove('hidden');status(m.message||'Sala encerrada.');}});
+ socket.addEventListener('message',e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m.type==='error'){status(m.message);return;}if(m.type==='removed'){returnToMenu(m.message||'Você foi removido da sala.');return;}if(m.type==='joined'){playerId=m.playerId||playerId;reconnectToken=m.reconnectToken||reconnectToken;try{localStorage.setItem('resenhaStopRoom',JSON.stringify({code:m.code,playerId,reconnectToken}));}catch(_){}return;}if(m.type==='state'){state=m;render();}if(m.type==='closed'){returnToMenu(m.message||'Sala encerrada.');}});
  socket.addEventListener('close',()=>{if(state&&state.phase!=='finished')status('Conexão encerrada. Atualize a página para tentar voltar à sala.');});
 }
 function send(data){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify(data));}
@@ -201,7 +210,7 @@ $('stopBtn').addEventListener('click',()=>{clearTimeout(draftTimer);const a=answ
 $('reviewCards').addEventListener('click',e=>{const b=e.target.closest('[data-vote-player]');if(!b||!state||state.phase!=='review')return;send({type:'vote',playerId:b.dataset.votePlayer,categoryId:b.dataset.voteCategory,valid:b.dataset.voteValue==='true'});});
 $('closeReviewBtn').addEventListener('click',()=>{if(confirm('Encerrar a avaliação e calcular os pontos desta rodada?'))send({type:'close_review'});});
 $('nextBtn').addEventListener('click',()=>send({type:'next'}));
-['leaveBtn','leaveReviewBtn','leaveResultsBtn','leaveFinalBtn'].forEach(id=>$(id).addEventListener('click',()=>send({type:'leave'})));
+['leaveBtn','leaveReviewBtn','leaveResultsBtn','leaveFinalBtn','leaveCountdownBtn','leavePlayingBtn'].forEach(id=>$(id).addEventListener('click',()=>{if(confirm('Deseja sair desta sala e voltar ao menu?'))send({type:'leave'});}));
 setInterval(()=>{if(state&&state.phase==='countdown'){const left=Math.max(0,Math.ceil((state.deadline-Date.now())/1000));const label=left>0?String(left):'COMEÇOU!';if($('countdownNumber').textContent!==label){$('countdownNumber').textContent=label;$('countdownNumber').classList.remove('go');void $('countdownNumber').offsetWidth;if(left===0)$('countdownNumber').classList.add('go');}}else updateRoundClock();},100);
 try{const saved=JSON.parse(localStorage.getItem('resenhaStopRoom')||'null');if(saved&&saved.code&&saved.reconnectToken){status('Recuperando sua sala…');connect({type:'reconnect',code:saved.code,reconnectToken:saved.reconnectToken});}}catch(_){}
 })();
