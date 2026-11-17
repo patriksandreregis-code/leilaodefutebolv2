@@ -114,7 +114,7 @@ function startRound(room) {
   const pool=room.allowedLetters&&room.allowedLetters.length?room.allowedLetters:LETTERS;
   if(!Array.isArray(room.letterBag)||room.letterBag.length===0){
     room.letterBag=[...pool];
-    for(let i=room.letterBag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[room.letterBag[i],room.letterBag[j]]=[room.letterBag[j],room.letterBag[i]];}
+    for(let i=room.letterBag.length-1;i>0;i--){const j=crypto.randomInt(i+1);[room.letterBag[i],room.letterBag[j]]=[room.letterBag[j],room.letterBag[i]];}
     if(room.letterBag.length>1&&room.letterBag[room.letterBag.length-1]===room.previousLetter){
       const swapIndex=room.letterBag.findIndex(letter=>letter!==room.previousLetter);
       if(swapIndex>=0)[room.letterBag[room.letterBag.length-1],room.letterBag[swapIndex]]=[room.letterBag[swapIndex],room.letterBag[room.letterBag.length-1]];
