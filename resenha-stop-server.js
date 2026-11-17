@@ -85,6 +85,12 @@ function closeReview(room) {
   room.phase='results';
   broadcast(room);
 }
+function removePlayerVotes(room,playerId) {
+  if(!room.reviewVotes)return;
+  delete room.reviewVotes[playerId];
+  for(const targetVotes of Object.values(room.reviewVotes))
+    for(const categoryVotes of Object.values(targetVotes)) delete categoryVotes[playerId];
+}
 function startRound(room) {
   clearRoundTimer(room);
   room.phase='playing';
@@ -171,6 +177,7 @@ async function connect(ws) {
       if(!player.host)return fail('Somente o anfitrião pode expulsar jogadores.');
       const target=room.players.find(p=>p.id===String(m.playerId||''));
       if(!target||target===player)return fail('Jogador não encontrado.');
+      removePlayerVotes(room,target.id);
       room.players=room.players.filter(p=>p!==target);
       target.reconnectToken=makeToken();
       if(target.ws){memberships.delete(target.ws);send(target.ws,{type:'removed',message:'O anfitrião removeu você da sala.'});try{target.ws.close(4003,'Removido da sala');}catch(_){}}
@@ -238,7 +245,7 @@ async function connect(ws) {
     }
     if(m.type==='leave'){
       if(player.host){closeRoom(room,player.name+' encerrou a sala.');return;}
-      room.players=room.players.filter(p=>p!==player);memberships.delete(ws);player.reconnectToken=makeToken();send(ws,{type:'closed',message:'Você saiu da sala.'});try{ws.close(1000,'Saiu da sala');}catch(_){}broadcast(room);return;
+      removePlayerVotes(room,player.id);room.players=room.players.filter(p=>p!==player);memberships.delete(ws);player.reconnectToken=makeToken();send(ws,{type:'closed',message:'Você saiu da sala.'});try{ws.close(1000,'Saiu da sala');}catch(_){}broadcast(room);return;
     }
   };
   ws.on('message',raw=>{
