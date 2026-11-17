@@ -93,7 +93,7 @@ function removePlayerVotes(room,playerId) {
 }
 function startRound(room) {
   clearRoundTimer(room);
-  room.phase='playing';
+  room.phase='countdown';
   const pool=room.allowedLetters&&room.allowedLetters.length?room.allowedLetters:LETTERS;
   if(!Array.isArray(room.letterBag)||room.letterBag.length===0){
     room.letterBag=[...pool];
@@ -105,9 +105,15 @@ function startRound(room) {
   }
   room.letter=room.letterBag.pop();
   room.previousLetter=room.letter;
-  room.deadline=Date.now()+60000; room.winner=null;
+  room.deadline=Date.now()+3000; room.winner=null;
   room.players.forEach(p=>{p.answers={};p.roundPoints=0;p.submitted=false;});
-  room.timer=setTimeout(()=>finishRound(room,'Tempo esgotado'),60000);
+  room.timer=setTimeout(()=>{
+    if(room.phase!=='countdown')return;
+    room.phase='playing';
+    room.deadline=Date.now()+60000;
+    room.timer=setTimeout(()=>finishRound(room,'Tempo esgotado'),60000);
+    broadcast(room);
+  },3000);
   broadcast(room);
 }
 async function connect(ws) {
