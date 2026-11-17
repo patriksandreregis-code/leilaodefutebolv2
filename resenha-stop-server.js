@@ -52,7 +52,7 @@ function publicState(room) {
     reviewProgress:room.phase==='review'?reviewProgress(room):[],
     answers:['review','results'].includes(room.phase) ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints,votes:Object.fromEntries(room.categories.map(c=>{const answer=norm(String((p.answers||{})[c.id]||''));const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};const values=Object.values(votes);return [c.id,{votes,valid:values.filter(Boolean).length,invalid:values.filter(v=>!v).length,accepted:room.phase==='results'?answer.length>=2&&answer[0]===norm(room.letter)[0]&&values.filter(Boolean).length>values.filter(v=>!v).length:false}];}))})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
-    winner:room.winner || null
+    winner:room.winner || null, chatMessages:(room.chatMessages||[]).slice(-60)
   };
 }
 function broadcast(room) { const state=publicState(room); room.players.forEach(p=>send(p.ws,state)); }
@@ -149,7 +149,7 @@ async function connect(ws) {
         if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],letterBag:[],previousLetter:'',round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,reviewVotes:{},createdAt:Date.now(),expiry:null,closed:false};
+        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],letterBag:[],previousLetter:'',round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,reviewVotes:{},chatMessages:[],createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -171,6 +171,7 @@ async function connect(ws) {
     if(!membership)return fail('Crie ou entre em uma sala primeiro.');
     const {room,player}=membership;
     if(room.closed||!room.players.includes(player))return fail('Sala indisponível.');
+    if(m.type==='chat'){const text=String(m.text||'').replace(/[\\u0000-\\u001f\\u007f]/g,' ').trim().slice(0,180);if(!text)return;if(!Array.isArray(room.chatMessages))room.chatMessages=[];room.chatMessages.push({name:player.name,text,at:Date.now(),system:false});if(room.chatMessages.length>60)room.chatMessages=room.chatMessages.slice(-60);broadcast(room);return;}
     if(m.type==='letters_update'){
       if(!player.host)return fail('Somente o anfitrião pode escolher as letras.');
       if(room.phase!=='lobby')return fail('As letras só podem ser alteradas antes da partida.');
