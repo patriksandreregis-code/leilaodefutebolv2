@@ -113,7 +113,7 @@ function startRound(room) {
     room.deadline=Date.now()+60000;
     room.timer=setTimeout(()=>finishRound(room,'Tempo esgotado'),60000);
     broadcast(room);
-  },3000);
+  },3500);
   broadcast(room);
 }
 async function connect(ws) {
