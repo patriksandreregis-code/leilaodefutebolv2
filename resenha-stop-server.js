@@ -33,7 +33,7 @@ function publicState(room) {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
     letter:room.letter, deadline:room.deadline, categories:room.categories, allowedLetters:room.allowedLetters,
     players:room.players.map(playerView),
-    answers:['review','results'].includes(room.phase) ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints,votes:Object.fromEntries(room.categories.map(c=>{const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};const values=Object.values(votes);return [c.id,{votes,valid:values.filter(Boolean).length,invalid:values.filter(v=>!v).length,accepted:room.phase==='results'?values.filter(Boolean).length>values.filter(v=>!v).length:false}];}))})) : [],
+    answers:['review','results'].includes(room.phase) ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints,votes:Object.fromEntries(room.categories.map(c=>{const answer=norm(String((p.answers||{})[c.id]||''));const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};const values=Object.values(votes);return [c.id,{votes,valid:values.filter(Boolean).length,invalid:values.filter(v=>!v).length,accepted:room.phase==='results'?answer.length>=2&&answer[0]===norm(room.letter)[0]&&values.filter(Boolean).length>values.filter(v=>!v).length:false}];}))})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
     winner:room.winner || null
   };
