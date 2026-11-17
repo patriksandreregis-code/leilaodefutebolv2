@@ -33,7 +33,7 @@ function publicState(room) {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
     letter:room.letter, deadline:room.deadline, categories:room.categories, allowedLetters:room.allowedLetters,
     players:room.players.map(playerView),
-    answers:room.phase==='results' ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints})) : [],
+    answers:['review','results'].includes(room.phase) ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints,votes:Object.fromEntries(room.categories.map(c=>{const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};const values=Object.values(votes);return [c.id,{votes,valid:values.filter(Boolean).length,invalid:values.filter(v=>!v).length,accepted:room.phase==='results'?values.filter(Boolean).length>values.filter(v=>!v).length:false}];}))})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
     winner:room.winner || null
   };
@@ -52,22 +52,37 @@ function addPlayer(room,ws,user,name) {
 }
 function finishRound(room,reason) {
   if(room.phase!=='playing') return;
-  clearRoundTimer(room); room.phase='results'; room.winner=reason||'Tempo encerrado';
+  clearRoundTimer(room);
+  room.phase='review';
+  room.winner=reason||'Tempo encerrado';
+  room.reviewVotes={};
+  broadcast(room);
+}
+function closeReview(room) {
+  if(room.phase!=='review') return;
   const totals=new Map();
-  for(const p of room.players) for(const [id,value] of Object.entries(p.answers||{})){
-    const answer=String(value||'').trim();
-    if(answer.length<2 || norm(answer)[0]!==norm(room.letter)[0]) continue;
-    const key=id+'|'+norm(answer); totals.set(key,(totals.get(key)||0)+1);
+  const acceptedAnswers=[];
+  for(const p of room.players) for(const c of room.categories){
+    const answer=String((p.answers||{})[c.id]||'').trim();
+    if(!answer) continue;
+    const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};
+    const values=Object.values(votes);
+    const accepted=norm(answer).length>=2&&norm(answer)[0]===norm(room.letter)[0]&&values.filter(Boolean).length>values.filter(v=>!v).length;
+    if(!accepted) continue;
+    acceptedAnswers.push({playerId:p.id,categoryId:c.id,answer});
+    const key=c.id+'|'+norm(answer);
+    totals.set(key,(totals.get(key)||0)+1);
   }
   for(const p of room.players){
     p.roundPoints=0;
-    for(const [id,value] of Object.entries(p.answers||{})){
-      const answer=String(value||'').trim(), key=id+'|'+norm(answer);
-      if(answer.length<2 || norm(answer)[0]!==norm(room.letter)[0]) continue;
+    for(const item of acceptedAnswers){
+      if(item.playerId!==p.id) continue;
+      const key=item.categoryId+'|'+norm(item.answer);
       p.roundPoints+=(totals.get(key)===1?10:5);
     }
     p.score+=p.roundPoints;
   }
+  room.phase='results';
   broadcast(room);
 }
 function startRound(room) {
@@ -105,7 +120,7 @@ async function connect(ws) {
         if(rooms.size>=150)return fail('O servidor atingiu o limite de salas. Tente novamente em alguns minutos.');
         const mode=m.mode==='football'?'football':'classic';
         let code=makeCode();while(rooms.has(code))code=makeCode();
-        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],letterBag:[],previousLetter:'',round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,createdAt:Date.now(),expiry:null,closed:false};
+        const room={code,mode,phase:'lobby',players:[],categories:CATEGORIES[mode].map(([id,label])=>({id,label})),allowedLetters:[...LETTERS],letterBag:[],previousLetter:'',round:0,totalRounds:[3,5,7,10].includes(Number(m.rounds))?Number(m.rounds):5,letter:'',deadline:0,timer:null,winner:null,reviewVotes:{},createdAt:Date.now(),expiry:null,closed:false};
         rooms.set(code,room);addPlayer(room,ws,user,name);broadcast(room);return;
       }
       const code=String(m.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -166,6 +181,26 @@ async function connect(ws) {
       if(room.phase!=='lobby'||room.players.length<2)return fail('É necessário ter pelo menos 2 jogadores para começar.');
       if(!room.allowedLetters||!room.allowedLetters.length)return fail('Selecione pelo menos uma letra.');
       room.round=1;startRound(room);return;
+    }
+    if(m.type==='vote'){
+      if(room.phase!=='review')return fail('A votação não está aberta.');
+      const targetId=String(m.playerId||''),categoryId=String(m.categoryId||'');
+      const target=room.players.find(p=>p.id===targetId);
+      if(!target||target===player)return fail('Você só pode avaliar respostas de outros jogadores.');
+      if(!room.categories.some(c=>c.id===categoryId))return fail('Categoria inválida.');
+      const answer=String((target.answers||{})[categoryId]||'').trim();
+      if(!answer)return fail('Não há resposta para avaliar.');
+      if(typeof m.valid!=='boolean')return fail('Voto inválido.');
+      if(!room.reviewVotes)room.reviewVotes={};
+      if(!room.reviewVotes[targetId])room.reviewVotes[targetId]={};
+      if(!room.reviewVotes[targetId][categoryId])room.reviewVotes[targetId][categoryId]={};
+      room.reviewVotes[targetId][categoryId][player.id]=m.valid;
+      broadcast(room);return;
+    }
+    if(m.type==='close_review'){
+      if(!player.host)return fail('Somente o anfitrião pode encerrar a avaliação.');
+      if(room.phase!=='review')return fail('A avaliação não está aberta.');
+      closeReview(room);return;
     }
     if(m.type==='draft'){
       if(room.phase!=='playing'||player.submitted)return;
