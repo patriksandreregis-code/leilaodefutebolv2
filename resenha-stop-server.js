@@ -28,11 +28,28 @@ async function verifyUser(accessToken) {
   } catch (error) { console.error('[Resenha Stop] Falha ao validar conta:', error.message); return null; }
 }
 function playerView(p) { return { id:p.id, name:p.name, online:!!p.ws, host:!!p.host, authenticated:!!p.userId, xpEligible:!!p.userId, score:p.score, submitted:!!p.submitted }; }
+function reviewProgress(room) {
+  return room.players.map(voter=>{
+    let required=0,completed=0;
+    for(const target of room.players){
+      if(target===voter)continue;
+      for(const category of room.categories){
+        const answer=String((target.answers||{})[category.id]||'').trim();
+        if(!answer)continue;
+        required++;
+        const votes=room.reviewVotes&&room.reviewVotes[target.id]&&room.reviewVotes[target.id][category.id];
+        if(votes&&Object.prototype.hasOwnProperty.call(votes,voter.id))completed++;
+      }
+    }
+    return {id:voter.id,name:voter.name,required,completed,done:completed>=required};
+  });
+}
 function publicState(room) {
   return {
     type:'state', code:room.code, mode:room.mode, phase:room.phase, round:room.round, totalRounds:room.totalRounds,
     letter:room.letter, deadline:room.deadline, categories:room.categories, allowedLetters:room.allowedLetters,
     players:room.players.map(playerView),
+    reviewProgress:room.phase==='review'?reviewProgress(room):[],
     answers:['review','results'].includes(room.phase) ? room.players.map(p=>({id:p.id,name:p.name,answers:p.answers,points:p.roundPoints,votes:Object.fromEntries(room.categories.map(c=>{const answer=norm(String((p.answers||{})[c.id]||''));const votes=(room.reviewVotes&&room.reviewVotes[p.id]&&room.reviewVotes[p.id][c.id])||{};const values=Object.values(votes);return [c.id,{votes,valid:values.filter(Boolean).length,invalid:values.filter(v=>!v).length,accepted:room.phase==='results'?answer.length>=2&&answer[0]===norm(room.letter)[0]&&values.filter(Boolean).length>values.filter(v=>!v).length:false}];}))})) : [],
     scores:room.players.map(p=>({id:p.id,name:p.name,score:p.score})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR')),
     winner:room.winner || null
