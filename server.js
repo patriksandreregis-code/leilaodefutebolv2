@@ -272,12 +272,67 @@ function squadsHtml() { // lista de elencos já pronta no HTML (os buscadores le
     g[n].sort((a, b) => a.y - b.y).map(x => `<h3>Copa ${x.y}</h3>` + x.p.map(p => `<span class="chip">${escH(p[0])} <b>${p[2]}</b> <span class="mu">${p[1]}</span></span>`).join('')).join('') + '</details>').join('');
 }
 const server = http.createServer(async (q, s) => {
-  // Migração do endereço antigo para o Resenha do Fut. Mantém caminho e query string.
+  // Página de aviso para quem ainda acessa o endereço antigo.
+  // Mantém caminhos e parâmetros para que links internos também cheguem ao destino correto.
   const requestHost = String(q.headers.host || '').split(':')[0].toLowerCase();
-  if (requestHost === 'leilaodefutebolv2.onrender.com') {
-    const destination = 'https://resenhadofut.onrender.com' + (q.url || '/');
-    s.writeHead(307, { Location: destination, 'Cache-Control': 'no-store' });
-    return s.end();
+  if (requestHost === 'leilaodefutebolv2.onrender.com' && q.method === 'GET') {
+    const requestedUrl = new URL(q.url || '/', 'https://resenhadofut.onrender.com');
+    const destination = 'https://resenhadofut.onrender.com' + requestedUrl.pathname + requestedUrl.search;
+    const safeDestination = destination.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const notice = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#101827">
+  <title>O Resenha do Fut mudou de endereço!</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#1d3555 0,#101827 55%,#090e18 100%);color:#f7fafc;font-family:Arial,Helvetica,sans-serif}
+    main{width:min(100%,560px);padding:clamp(26px,6vw,48px);border:1px solid #34445b;border-radius:24px;background:rgba(17,27,43,.94);box-shadow:0 24px 80px #0008;text-align:center}
+    .mark{width:64px;height:64px;margin:0 auto 20px;border-radius:18px;display:grid;place-items:center;background:#b7f34a;color:#13210a;font-size:30px;font-weight:900}
+    .eyebrow{color:#b7f34a;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+    h1{font-size:clamp(27px,6vw,38px);line-height:1.12;margin:12px 0}
+    p{color:#bdc8d8;line-height:1.6;margin:12px 0}
+    .address{margin:22px 0;padding:15px;border-radius:14px;background:#0b1422;border:1px solid #30415a}
+    .address small{display:block;color:#8292a8;margin-bottom:7px}
+    .address strong{display:block;color:#fff;overflow-wrap:anywhere;font-size:16px}
+    .new{color:#b7f34a!important;font-size:19px!important;font-weight:800}
+    a.button{display:block;margin-top:22px;padding:16px 20px;border-radius:12px;background:#b7f34a;color:#14200c;text-decoration:none;font-weight:900}
+    .count{margin-top:18px!important;font-size:14px;color:#9eacc0}
+    #seconds{color:#b7f34a;font-weight:900;font-size:20px}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark">RF</div>
+    <div class="eyebrow">Tem novidade!</div>
+    <h1>O Resenha do Fut mudou de endereço!</h1>
+    <p>Antes você acessava o nosso site por este endereço:</p>
+    <div class="address"><small>ENDEREÇO ANTIGO</small><strong>leilaodefutebolv2.onrender.com</strong></div>
+    <p>Agora ficou mais fácil! Nosso novo endereço é:</p>
+    <div class="address"><small>NOVO ENDEREÇO OFICIAL</small><strong class="new">resenhadofut.onrender.com</strong></div>
+    <p>Seus jogos e a resenha continuam no mesmo lugar. Atualize seu favorito para não perder o novo endereço!</p>
+    <a class="button" href="${safeDestination}">Acessar o Resenha do Fut agora</a>
+    <p class="count">Você será redirecionado automaticamente em <span id="seconds">6</span> segundos...</p>
+  </main>
+  <script>
+    let remaining = 6;
+    const counter = document.getElementById('seconds');
+    const target = ${JSON.stringify(destination)};
+    const timer = setInterval(() => {
+      remaining -= 1;
+      counter.textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(timer);
+        window.location.replace(target);
+      }
+    }, 1000);
+  </script>
+</body>
+</html>`;
+    s.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' });
+    return s.end(notice);
   }
   const pth = new URL(q.url, 'http://x').pathname, site = siteOf(q), hdr = { ...SEC };
   if (String(q.headers['x-forwarded-proto'] || '').startsWith('https')) hdr['Strict-Transport-Security'] = 'max-age=31536000';
