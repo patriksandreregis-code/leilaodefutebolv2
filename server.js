@@ -290,7 +290,7 @@ const server = http.createServer(async (q, s) => {
   <style>
     *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#1d3555 0,#101827 55%,#090e18 100%);color:#f7fafc;font-family:Arial,Helvetica,sans-serif}
     main{width:min(100%,560px);padding:clamp(26px,6vw,48px);border:1px solid #34445b;border-radius:24px;background:rgba(17,27,43,.94);box-shadow:0 24px 80px #0008;text-align:center}
-    .mark{width:64px;height:64px;margin:0 auto 20px;border-radius:18px;display:grid;place-items:center;background:#b7f34a;color:#13210a;font-size:30px;font-weight:900}
+    .mark{width:92px;height:92px;margin:0 auto 20px;display:grid;place-items:center;background:transparent}.mark img{display:block;width:100%;height:100%;object-fit:contain}
     .eyebrow{color:#b7f34a;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
     h1{font-size:clamp(27px,6vw,38px);line-height:1.12;margin:12px 0}
     p{color:#bdc8d8;line-height:1.6;margin:12px 0}
@@ -305,7 +305,7 @@ const server = http.createServer(async (q, s) => {
 </head>
 <body>
   <main>
-    <div class="mark">RF</div>
+    <div class="mark"><img src="/logo.png" alt="Logo do Resenha do Fut"></div>
     <div class="eyebrow">Tem novidade!</div>
     <h1>O Resenha do Fut mudou de endereço!</h1>
     <p>Antes você acessava o nosso site por este endereço:</p>
