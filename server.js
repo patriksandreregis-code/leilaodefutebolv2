@@ -305,7 +305,7 @@ const server = http.createServer(async (q, s) => {
 </head>
 <body>
   <main>
-    <div class="mark"><img src="/logo.png" alt="Logo do Resenha do Fut"></div>
+    <div class="mark"><img src="https://resenhadofut.onrender.com/logo.png" alt="Logo do Resenha do Fut"></div>
     <div class="eyebrow">Tem novidade!</div>
     <h1>O Resenha do Fut mudou de endereço!</h1>
     <p>Antes você acessava o nosso site por este endereço:</p>
